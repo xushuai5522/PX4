@@ -2392,7 +2392,8 @@ Mavlink::task_main(int argc, char *argv[])
 							_vehicle_command_ack_sub.get_last_generation());
 					}
 
-					if (!command_ack.from_external && command_ack.command < vehicle_command_s::VEHICLE_CMD_PX4_INTERNAL_START) {
+					if (!command_ack.from_external && command_ack.command < vehicle_command_s::VEHICLE_CMD_PX4_INTERNAL_START
+					    && command_ack.target_component < vehicle_command_s::COMPONENT_MODE_EXECUTOR_START) {
 						mavlink_command_ack_t msg{};
 						msg.result = command_ack.result;
 						msg.command = command_ack.command;
