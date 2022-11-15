@@ -232,6 +232,7 @@ private:
 	} _mission_type{MISSION_TYPE_NONE};
 
 	bool _need_mission_reset{false};
+	bool _system_disarmed_while_inactive{false};
 	bool _mission_waypoints_changed{false};
 	bool _mission_changed{false}; /** < true if the mission changed since the mission mode was active */
 

@@ -103,14 +103,6 @@ Mission::on_inactive()
 {
 	PlannedMissionInterface::update();
 
-
-	/* reset the current mission if needed */
-	if (need_to_reset_mission()) {
-		reset_mission(_mission);
-		update_mission();
-		_navigator->reset_cruising_speed();
-	}
-
 	/* Need to check the initialized mission once, have to do it here, since we need to wait for the home position. */
 	if (_navigator->home_global_position_valid() && !_initialized_mission_checked) {
 		check_mission_valid();
@@ -120,6 +112,11 @@ Mission::on_inactive()
 	/* require takeoff after non-loiter or landing */
 	if (!_navigator->get_can_loiter_at_sp() || _navigator->get_land_detected()->landed) {
 		_need_takeoff = true;
+	}
+
+	if (_navigator->get_vstatus()->arming_state != vehicle_status_s::ARMING_STATE_ARMED)
+	{
+		_system_disarmed_while_inactive = true;
 	}
 
 	/* reset so current mission item gets restarted if mission was paused */
@@ -156,6 +153,15 @@ Mission::on_inactivation()
 void
 Mission::on_activation()
 {
+	/* reset the current mission if needed */
+	if (need_to_reset_mission()) {
+		reset_mission(_mission);
+		update_mission();
+		_navigator->reset_cruising_speed();
+	}
+	_need_mission_reset = true;
+	_system_disarmed_while_inactive = false;
+
 	if (_mission_waypoints_changed) {
 		// do not set the closest mission item in the normal mission mode
 		if (_mission_execution_mode != mission_result_s::MISSION_EXECUTION_MODE_NORMAL) {
@@ -187,9 +193,6 @@ void
 Mission::on_active()
 {
 	PlannedMissionInterface::update();
-
-	/* mission is running (and we are armed), need reset after disarm */
-	_need_mission_reset = true;
 
 	_mission_changed = false;
 
@@ -1394,7 +1397,7 @@ bool
 Mission::need_to_reset_mission()
 {
 	/* reset mission state when disarmed */
-	if (_navigator->get_vstatus()->arming_state != vehicle_status_s::ARMING_STATE_ARMED && _need_mission_reset) {
+	if (_system_disarmed_while_inactive && _need_mission_reset) {
 		_need_mission_reset = false;
 		return true;
 	}
