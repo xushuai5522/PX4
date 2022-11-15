@@ -121,21 +121,12 @@ Mission::on_inactive()
 
 	/* reset so current mission item gets restarted if mission was paused */
 	_work_item_type = WORK_ITEM_TYPE_DEFAULT;
-
-	/* reset so MISSION_ITEM_REACHED isn't published */
-	_navigator->get_mission_result()->seq_reached = -1;
 }
 
 void
 Mission::on_inactivation()
 {
-	// Disable camera trigger
-	vehicle_command_s cmd {};
-	cmd.command = vehicle_command_s::VEHICLE_CMD_DO_TRIGGER_CONTROL;
-	// Pause trigger
-	cmd.param1 = -1.0f;
-	cmd.param3 = 1.0f;
-	_navigator->publish_vehicle_cmd(&cmd);
+	setCameraTrigger(false);
 
 	_navigator->stop_capturing_images();
 	_navigator->release_gimbal_control();
@@ -148,6 +139,9 @@ Mission::on_inactivation()
 
 	/* reset so current mission item gets restarted if mission was paused */
 	_work_item_type = WORK_ITEM_TYPE_DEFAULT;
+
+	/* reset so MISSION_ITEM_REACHED isn't published */
+	_navigator->get_mission_result()->seq_reached = -1;
 }
 
 void
@@ -181,12 +175,7 @@ Mission::on_activation()
 	set_mission_items();
 
 	// unpause triggering if it was paused
-	vehicle_command_s cmd = {};
-	cmd.command = vehicle_command_s::VEHICLE_CMD_DO_TRIGGER_CONTROL;
-	// unpause trigger
-	cmd.param1 = -1.0f;
-	cmd.param3 = 0.0f;
-	_navigator->publish_vehicle_cmd(&cmd);
+	setCameraTrigger(true);
 }
 
 void
@@ -1457,3 +1446,21 @@ void Mission::publish_navigator_mission_item()
 
 	_navigator_mission_item_pub.publish(navigator_mission_item);
 }
+
+void Mission::setCameraTrigger(bool enable)
+{
+	vehicle_command_s cmd {};
+	cmd.command = vehicle_command_s::VEHICLE_CMD_DO_TRIGGER_CONTROL;
+	// Pause trigger
+	cmd.param1 = -1.0f;
+	if(enable)
+	{
+		cmd.param3 = 0.0f;
+	}
+	else
+	{
+		cmd.param3 = 1.0f;
+	}
+	_navigator->publish_vehicle_cmd(&cmd);
+}
+

@@ -208,6 +208,8 @@ private:
 
 	void publish_navigator_mission_item();
 
+	void setCameraTrigger(bool enable);
+
 	DEFINE_PARAMETERS(
 		(ParamFloat<px4::params::MIS_DIST_1WP>) _param_mis_dist_1wp,
 		(ParamFloat<px4::params::MIS_DIST_WPS>) _param_mis_dist_wps,
