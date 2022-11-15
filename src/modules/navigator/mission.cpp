@@ -103,11 +103,6 @@ Mission::on_inactive()
 {
 	PlannedMissionInterface::update();
 
-	// if we were executing a landing but have been inactive for 2 seconds, then make the landing invalid
-	// this prevents RTL to just continue at the current mission index
-	if (_navigator->getMissionLandingInProgress() && (hrt_absolute_time() - _time_mission_deactivated) > 2_s) {
-		_navigator->setMissionLandingInProgress(false);
-	}
 
 	/* reset the current mission if needed */
 	if (need_to_reset_mission()) {
@@ -361,7 +356,7 @@ Mission::land_start()
 {
 	// if not currently landing, jump to do_land_start
 	if (hasMissionLandStart()) {
-		if (_navigator->getMissionLandingInProgress()) {
+		if (landing()) {
 			return true;
 
 		} else {
@@ -371,9 +366,7 @@ Mission::land_start()
 				return false;
 			}
 
-			const bool can_land_now = landing();
-			_navigator->setMissionLandingInProgress(can_land_now);
-			return can_land_now;
+			return landing();
 		}
 	}
 
@@ -1353,11 +1346,6 @@ Mission::set_mission_item_reached()
 {
 	_navigator->get_mission_result()->seq_reached = _mission.current_seq;
 	_navigator->set_mission_result_updated();
-
-	// let the navigator know that we are currently executing the mission landing.
-	// Using the method landing() itself is not accurate as it only give information about the mission index
-	// but the vehicle could still be very far from the actual landing items
-	_navigator->setMissionLandingInProgress(landing());
 
 	reset_mission_item_reached();
 }
