@@ -649,7 +649,7 @@ void Navigator::run()
 							// The seconds condition is required so that when no mission was uploaded and one is available the closest
 							// mission item is determined and also that if the user changes the active mission index while rtl is active
 							// always that waypoint is tracked first.
-							if ((_navigation_mode != &_mission) && (rtl_activated || _mission.get_mission_waypoints_changed())) {
+							if ((_navigation_mode != &_mission) && (rtl_activated)) {
 								_mission.set_closest_item_as_current();
 							}
 

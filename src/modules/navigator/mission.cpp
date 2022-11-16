@@ -72,23 +72,11 @@ Mission::Mission(Navigator *navigator) :
 
 void Mission::onMissionUpdate(bool has_mission_items_changed)
 {
-	if (has_mission_items_changed && !_land_detected_sub.get().landed) {
-		_mission_waypoints_changed = true;
-	}
-
 	_is_current_planned_mission_item_valid = true;
 	update_mission();
 
 	if (isActive()) {
 		_navigator->reset_triplets();
-
-		if (_mission_execution_mode != mission_result_s::MISSION_EXECUTION_MODE_NORMAL) {
-			_is_current_planned_mission_item_valid = setMissionToClosestItem(_navigator->get_global_position()->lat,
-					_navigator->get_global_position()->lon, _navigator->get_global_position()->alt, _navigator->get_home_position()->alt,
-					_vehicle_status_sub.get()) == EXIT_SUCCESS;
-		}
-
-		_mission_waypoints_changed = false;
 		set_mission_items();
 
 	} else {
@@ -158,22 +146,6 @@ Mission::on_activation()
 	}
 	_need_mission_reset = true;
 	_system_disarmed_while_inactive = false;
-
-	if (_mission_waypoints_changed) {
-		// do not set the closest mission item in the normal mission mode
-		if (_mission_execution_mode != mission_result_s::MISSION_EXECUTION_MODE_NORMAL) {
-			_is_current_planned_mission_item_valid = setMissionToClosestItem(_navigator->get_global_position()->lat,
-					_navigator->get_global_position()->lon, _navigator->get_global_position()->alt, _navigator->get_home_position()->alt,
-					_vehicle_status_sub.get()) == EXIT_SUCCESS;
-		}
-
-		_mission_waypoints_changed = false;
-	}
-
-	check_mission_valid();
-
-	// we already reset the mission items
-	_execution_mode_changed = false;
 
 	set_mission_items();
 
@@ -265,10 +237,6 @@ Mission::set_current_mission_index(uint16_t index)
 		if (!_is_current_planned_mission_item_valid) {
 			return false;
 		}
-
-		// a mission index is set manually which has the higher priority than the closest mission item
-		// as it is set by the user
-		_mission_waypoints_changed = false;
 
 		// update mission items if already in active mission
 		if (isActive()) {
