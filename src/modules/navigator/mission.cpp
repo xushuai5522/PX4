@@ -72,7 +72,7 @@ Mission::Mission(Navigator *navigator) :
 
 void Mission::onMissionUpdate(bool has_mission_items_changed)
 {
-	if (has_mission_items_changed && !_navigator->get_land_detected()->landed) {
+	if (has_mission_items_changed && !_land_detected_sub.get().landed) {
 		_mission_waypoints_changed = true;
 	}
 
@@ -103,14 +103,15 @@ Mission::on_inactive()
 {
 	PlannedMissionInterface::update();
 
+	_land_detected_sub.update();
+
 	/* Need to check the initialized mission once, have to do it here, since we need to wait for the home position. */
 	if (_navigator->home_global_position_valid() && !_initialized_mission_checked) {
 		check_mission_valid();
 		_initialized_mission_checked = true;
 	}
-
 	/* require takeoff after non-loiter or landing */
-	if (!_navigator->get_can_loiter_at_sp() || _navigator->get_land_detected()->landed) {
+	if (!_navigator->get_can_loiter_at_sp() || _land_detected_sub.get().landed) {
 		_need_takeoff = true;
 	}
 
@@ -182,6 +183,7 @@ void
 Mission::on_active()
 {
 	PlannedMissionInterface::update();
+	_land_detected_sub.update();
 
 	_mission_changed = false;
 
@@ -302,7 +304,7 @@ Mission::set_execution_mode(const uint8_t mode)
 				// command a transition if in vtol mc mode
 				if (_navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING &&
 				    _navigator->get_vstatus()->is_vtol &&
-				    !_navigator->get_land_detected()->landed) {
+				    !_land_detected_sub.get().landed) {
 
 					set_vtol_transition_item(&_mission_item, vtol_vehicle_status_s::VEHICLE_VTOL_STATE_FW);
 
@@ -501,7 +503,7 @@ Mission::set_mission_items()
 	} else {
 		if (_mission_type != MISSION_TYPE_NONE) {
 
-			if (_navigator->get_land_detected()->landed) {
+			if (_land_detected_sub.get().landed) {
 				mavlink_log_info(_navigator->get_mavlink_log_pub(),
 						 _mission_execution_mode == mission_result_s::MISSION_EXECUTION_MODE_REVERSE ? "Reverse Mission finished, landed\t" :
 						 "Mission finished, landed\t");
@@ -537,7 +539,7 @@ Mission::set_mission_items()
 
 		position_setpoint_triplet_s *pos_sp_triplet = _navigator->get_position_setpoint_triplet();
 
-		if (_navigator->get_land_detected()->landed) {
+		if (_land_detected_sub.get().landed) {
 			_mission_item.nav_cmd = NAV_CMD_IDLE;
 
 		} else {
@@ -569,7 +571,7 @@ Mission::set_mission_items()
 			 * https://en.wikipedia.org/wiki/Loiter_(aeronautics)
 			 */
 
-			if (_navigator->get_land_detected()->landed) {
+			if (_land_detected_sub.get().landed) {
 				/* landed, refusing to take off without a mission */
 				mavlink_log_critical(_navigator->get_mavlink_log_pub(), "No valid mission available, refusing takeoff\t");
 				events::send(events::ID("mission_not_valid_refuse"), {events::Log::Error, events::LogInternal::Disabled},
@@ -675,7 +677,7 @@ Mission::set_mission_items()
 				    _work_item_type == WORK_ITEM_TYPE_TAKEOFF &&
 				    new_work_item_type == WORK_ITEM_TYPE_DEFAULT &&
 				    _navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING &&
-				    !_navigator->get_land_detected()->landed) {
+				    !_land_detected_sub.get().landed) {
 
 					/* disable weathervane before front transition for allowing yaw to align */
 					pos_sp_triplet->current.disable_weather_vane = true;
@@ -698,7 +700,7 @@ Mission::set_mission_items()
 				if (_mission_item.nav_cmd == NAV_CMD_VTOL_TAKEOFF &&
 				    _work_item_type == WORK_ITEM_TYPE_ALIGN &&
 				    _navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING &&
-				    !_navigator->get_land_detected()->landed) {
+				    !_land_detected_sub.get().landed) {
 
 					/* re-enable weather vane again after alignment */
 					pos_sp_triplet->current.disable_weather_vane = false;
@@ -730,7 +732,7 @@ Mission::set_mission_items()
 				if (_mission_item.nav_cmd == NAV_CMD_VTOL_LAND
 				    && (_work_item_type == WORK_ITEM_TYPE_DEFAULT || _work_item_type == WORK_ITEM_TYPE_TRANSITON_AFTER_TAKEOFF)
 				    && new_work_item_type == WORK_ITEM_TYPE_DEFAULT
-				    && !_navigator->get_land_detected()->landed) {
+				    && !_land_detected_sub.get().landed) {
 
 					new_work_item_type = WORK_ITEM_TYPE_MOVE_TO_LAND;
 
@@ -757,7 +759,7 @@ Mission::set_mission_items()
 				    && _work_item_type == WORK_ITEM_TYPE_MOVE_TO_LAND
 				    && new_work_item_type == WORK_ITEM_TYPE_DEFAULT
 				    && _navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING
-				    && !_navigator->get_land_detected()->landed) {
+				    && !_land_detected_sub.get().landed) {
 
 					set_vtol_transition_item(&_mission_item, vtol_vehicle_status_s::VEHICLE_VTOL_STATE_MC);
 					_mission_item.altitude = _navigator->get_global_position()->alt;
@@ -893,8 +895,8 @@ Mission::set_mission_items()
 				    && _work_item_type == WORK_ITEM_TYPE_DEFAULT
 				    && new_work_item_type == WORK_ITEM_TYPE_DEFAULT
 				    && _navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING
-				    && !_navigator->get_land_detected()->landed
-				    && num_found_items > 0u) {
+				    && !_land_detected_sub.get().landed
+				    && (num_found_items > 0u)) {
 
 					/* disable weathervane before front transition for allowing yaw to align */
 					pos_sp_triplet->current.disable_weather_vane = true;
@@ -1056,7 +1058,7 @@ Mission::do_need_vertical_takeoff()
 
 		float takeoff_alt = calculate_takeoff_altitude(&_mission_item);
 
-		if (_navigator->get_land_detected()->landed) {
+		if (_land_detected_sub.get().landed) {
 			/* force takeoff if landed (additional protection) */
 			_need_takeoff = true;
 
@@ -1155,7 +1157,7 @@ Mission::calculate_takeoff_altitude(struct mission_item_s *mission_item)
 	float takeoff_alt = get_absolute_altitude_for_item(*mission_item);
 
 	/* takeoff to at least MIS_TAKEOFF_ALT above home/ground, even if first waypoint is lower */
-	if (_navigator->get_land_detected()->landed) {
+	if (_land_detected_sub.get().landed) {
 		takeoff_alt = fmaxf(takeoff_alt, _navigator->get_global_position()->alt + _navigator->get_takeoff_min_alt());
 
 	} else {

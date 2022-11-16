@@ -64,6 +64,7 @@
 #include <uORB/topics/navigator_mission_item.h>
 #include <uORB/topics/position_setpoint_triplet.h>
 #include <uORB/topics/vehicle_global_position.h>
+#include <uORB/topics/vehicle_land_detected.h>
 #include <uORB/topics/vehicle_status.h>
 #include <uORB/topics/vehicle_roi.h>
 #include <uORB/uORB.h>
@@ -217,6 +218,8 @@ private:
 	)
 
 	uORB::Publication<navigator_mission_item_s> _navigator_mission_item_pub{ORB_ID::navigator_mission_item};
+
+	uORB::SubscriptionData<vehicle_land_detected_s> _land_detected_sub{ORB_ID(vehicle_land_detected)};	/**< vehicle land detected subscription */
 
 	float _landing_loiter_radius{0.f};
 
