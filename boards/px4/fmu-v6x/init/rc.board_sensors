@@ -58,7 +58,7 @@ else
 fi
 
 # Internal SPI bus ICM42688p
-icm42688p -R 6 -s start
+#icm42688p -R 6 -s start # disabled for DMA for Dshot
 
 if ver hwtypecmp V6X000003 V6X001003 V6X003003 V6X000004 V6X001004 V6X004003 V6X004004 V6X005003 V6X005004
 then
