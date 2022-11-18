@@ -575,7 +575,6 @@ void Navigator::run()
 		case vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION:
 			_pos_sp_triplet_published_invalid_once = false;
 
-			_mission.set_execution_mode(mission_result_s::MISSION_EXECUTION_MODE_NORMAL);
 			navigation_mode_new = &_mission;
 
 			break;
@@ -596,7 +595,6 @@ void Navigator::run()
 
 					if (!rtl_activated && _rtl.getRTLState() > RTL::RTLState::RTL_STATE_LOITER
 					    && _rtl.getShouldEngageMissionForLanding()) {
-						_mission.set_execution_mode(mission_result_s::MISSION_EXECUTION_MODE_FAST_FORWARD);
 
 						if (_vstatus.arming_state == vehicle_status_s::ARMING_STATE_ARMED
 						    && !get_land_detected()->landed) {
@@ -614,7 +612,6 @@ void Navigator::run()
 				case RTL::RTL_TYPE_MISSION_LANDING_REVERSED:
 					if (_mission.get_land_start_available() && !get_land_detected()->landed) {
 						// the mission contains a landing spot
-						_mission.set_execution_mode(mission_result_s::MISSION_EXECUTION_MODE_FAST_FORWARD);
 
 						if (_navigation_mode != &_mission) {
 							if (_navigation_mode == nullptr) {
@@ -639,7 +636,6 @@ void Navigator::run()
 
 					} else {
 						// fly the mission in reverse if switching from a non-manual mode
-						_mission.set_execution_mode(mission_result_s::MISSION_EXECUTION_MODE_REVERSE);
 
 						if ((_navigation_mode != nullptr && (_navigation_mode != &_rtl || _mission.get_mission_changed())) &&
 						    (! _mission.get_mission_finished()) &&

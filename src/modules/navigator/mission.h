@@ -104,12 +104,6 @@ public:
 
 	void set_closest_item_as_current();
 
-	/**
-	 * Set a new mission mode and handle the switching between the different modes
-	 *
-	 * For a list of the different modes refer to mission_result.msg
-	 */
-	void set_execution_mode(const uint8_t mode);
 private:
 	/**
 	 * Update mission topic
