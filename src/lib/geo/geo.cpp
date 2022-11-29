@@ -145,15 +145,15 @@ void create_waypoint_from_line_and_dist(double lat_A, double lon_A, double lat_B
 void waypoint_from_heading_and_distance(const double lat_start, const double lon_start, const float bearing,
 					const float dist, double *lat_target, double *lon_target)
 {
-	float heading = wrap_2pi(bearing);
+	float course_bearing = wrap_2pi(bearing);
 	double radius_ratio = static_cast<double>(dist) / CONSTANTS_RADIUS_OF_EARTH;
 
 	double lat_start_rad = math::radians(lat_start);
 	double lon_start_rad = math::radians(lon_start);
 
 	*lat_target = asin(sin(lat_start_rad) * cos(radius_ratio) + cos(lat_start_rad) * sin(radius_ratio) * cos((
-				   double)heading));
-	*lon_target = lon_start_rad + atan2(sin((double)heading) * sin(radius_ratio) * cos(lat_start_rad),
+				   double)course_bearing));
+	*lon_target = lon_start_rad + atan2(sin((double)course_bearing) * sin(radius_ratio) * cos(lat_start_rad),
 					    cos(radius_ratio) - sin(lat_start_rad) * sin(*lat_target));
 
 	*lat_target = math::degrees(*lat_target);

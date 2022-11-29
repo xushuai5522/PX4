@@ -8,10 +8,11 @@ uint8 GF_ACTION_LAND      = 5   # switch to AUTO|LAND
 
 bool max_altitude_exceeded       # true if the maximum altitude allowed is exceeded
 bool max_distance_exceeded       # true if the maximum distance from home allowed is exceeded
-bool primary_geofence_breached   # true if the primary geofence is breached
-bool secondary_geofence_breached # true if the secondary geofence is breached
 
+bool primary_geofence_breached   # true if the primary geofence is breached
 uint8 primary_geofence_action    # action to take when the primary geofence is breached
+
+bool secondary_geofence_breached # true if the secondary geofence is breached
 uint8 secondary_geofence_action  # action to take when the secondary geofence is breached
 
 bool home_required               # true if the geofence requires a valid home position

@@ -444,7 +444,7 @@ private:
 	char _geofence_violation_warning[50];
 
 	DEFINE_PARAMETERS(
-<<<<<<< HEAD
+		<<< <<< < HEAD
 		(ParamFloat<px4::params::NAV_LOITER_RAD>)   _param_nav_loiter_rad,	/**< loiter radius for fixedwing */
 		(ParamFloat<px4::params::NAV_ACC_RAD>)      _param_nav_acc_rad,		/**< acceptance for takeoff */
 		(ParamFloat<px4::params::NAV_FW_ALT_RAD>)   _param_nav_fw_alt_rad,	/**< acceptance rad for fixedwing alt */
@@ -458,8 +458,8 @@ private:
 		(ParamFloat<px4::params::NAV_MIN_LTR_ALT>)   _param_min_ltr_alt,	/**< minimum altitude in Loiter mode*/
 
 		// non-navigator parameters: Mission (MIS_*)
-=======
-		(ParamFloat<px4::params::NAV_LOITER_RAD>)   _param_nav_loiter_rad,   /**< loiter radius for fixedwing */
+		== == == =
+			(ParamFloat<px4::params::NAV_LOITER_RAD>)   _param_nav_loiter_rad,   /**< loiter radius for fixedwing */
 		(ParamFloat<px4::params::NAV_ACC_RAD>)      _param_nav_acc_rad,      /**< acceptance for takeoff */
 		(ParamFloat<px4::params::NAV_FW_ALT_RAD>)   _param_nav_fw_alt_rad,   /**< acceptance rad for fixedwing alt */
 		(ParamFloat<px4::params::NAV_FW_ALTL_RAD>)  _param_nav_fw_altl_rad,  /**< acceptance rad for fw alt before landing*/
@@ -472,17 +472,17 @@ private:
 		// non-navigator parameters: Mission (MIS_*)
 		(ParamFloat<px4::params::MIS_LTRMIN_ALT>)  _param_mis_ltrmin_alt,
 		(ParamFloat<px4::params::MIS_PD_TO>)       _param_mis_payload_delivery_timeout,
->>>>>>> d2ab169435... Add a Secondary Geofence as an offset from the Primary Geofence.
+		>>>>>>> d2ab169435... Add a Secondary Geofence as an offset from the Primary Geofence.
 		(ParamFloat<px4::params::MIS_TAKEOFF_ALT>) _param_mis_takeoff_alt,
 		(ParamInt<px4::params::MIS_TKO_LAND_REQ>)  _para_mis_takeoff_land_req,
 		(ParamFloat<px4::params::MIS_YAW_TMT>)     _param_mis_yaw_tmt,
 		(ParamFloat<px4::params::MIS_YAW_ERR>)     _param_mis_yaw_err,
-<<<<<<< HEAD
+		<<< <<< < HEAD
 		(ParamFloat<px4::params::MIS_PD_TO>)       _param_mis_payload_delivery_timeout,
 		(ParamFloat<px4::params::LNDMC_ALT_MAX>)   _param_lndmc_alt_max,
 		(ParamInt<px4::params::MIS_LND_ABRT_ALT>)  _param_mis_lnd_abrt_alt
-=======
-		(ParamFloat<px4::params::LNDMC_ALT_MAX>)   _param_lndmc_alt_max
->>>>>>> d2ab169435... Add a Secondary Geofence as an offset from the Primary Geofence.
+		== == == =
+			(ParamFloat<px4::params::LNDMC_ALT_MAX>)   _param_lndmc_alt_max
+			>>>>>>> d2ab169435... Add a Secondary Geofence as an offset from the Primary Geofence.
 	)
 };

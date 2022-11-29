@@ -72,9 +72,20 @@
 #include <uORB/topics/mavlink_log.h>
 #include <uORB/topics/tune_control.h>
 
+typedef enum VEHICLE_MODE_FLAG {
+	VEHICLE_MODE_FLAG_CUSTOM_MODE_ENABLED  = 1,   /* 0b00000001 Reserved for future use. | */
+	VEHICLE_MODE_FLAG_TEST_ENABLED         = 2,   /* 0b00000010 system has a test mode enabled. This flag is intended for temporary system tests and should not be used for stable implementations. | */
+	VEHICLE_MODE_FLAG_AUTO_ENABLED         = 4,   /* 0b00000100 autonomous mode enabled, system finds its own goal positions. Guided flag can be set or not, depends on the actual implementation. | */
+	VEHICLE_MODE_FLAG_GUIDED_ENABLED       = 8,   /* 0b00001000 guided mode enabled, system flies MISSIONs / mission items. | */
+	VEHICLE_MODE_FLAG_STABILIZE_ENABLED    = 16,  /* 0b00010000 system stabilizes electronically its attitude (and optionally position). It needs however further control inputs to move around. | */
+	VEHICLE_MODE_FLAG_HIL_ENABLED          = 32,  /* 0b00100000 hardware in the loop simulation. All motors / actuators are blocked, but internal software is full operational. | */
+	VEHICLE_MODE_FLAG_MANUAL_INPUT_ENABLED = 64,  /* 0b01000000 remote control input is enabled. | */
+	VEHICLE_MODE_FLAG_SAFETY_ARMED         = 128, /* 0b10000000 MAV safety set to armed. Motors are enabled / running / can start. Ready to fly. Additional note: this flag is to be ignore when sent in the command MAV_CMD_DO_SET_MODE and MAV_CMD_COMPONENT_ARM_DISARM shall be used instead. The flag can still be used to report the armed state. | */
+	VEHICLE_MODE_FLAG_ENUM_END             = 129, /*  | */
+} VEHICLE_MODE_FLAG;
 
 // TODO: generate
-static constexpr bool operator ==(const actuator_armed_s &a, const actuator_armed_s &b)
+static constexpr bool operator == (const actuator_armed_s &a, const actuator_armed_s &b)
 {
 	return (a.armed == b.armed &&
 		a.prearmed == b.prearmed &&
@@ -86,6 +97,43 @@ static constexpr bool operator ==(const actuator_armed_s &a, const actuator_arme
 }
 
 static_assert(sizeof(actuator_armed_s) == 16, "actuator_armed equality operator review");
+
+static constexpr const char *arm_disarm_reason_str(arm_disarm_reason_t calling_reason)
+{
+	switch (calling_reason) {
+	case arm_disarm_reason_t::transition_to_standby: return "";
+
+	case arm_disarm_reason_t::rc_stick: return "RC";
+
+	case arm_disarm_reason_t::rc_switch: return "RC (switch)";
+
+	case arm_disarm_reason_t::command_internal: return "internal command";
+
+	case arm_disarm_reason_t::command_external: return "external command";
+
+	case arm_disarm_reason_t::mission_start: return "mission start";
+
+	case arm_disarm_reason_t::auto_disarm_land: return "landing";
+
+	case arm_disarm_reason_t::auto_disarm_preflight: return "auto preflight disarming";
+
+	case arm_disarm_reason_t::kill_switch: return "kill-switch";
+
+	case arm_disarm_reason_t::lockdown: return "lockdown";
+
+	case arm_disarm_reason_t::failure_detector: return "failure detector";
+
+	case arm_disarm_reason_t::shutdown: return "shutdown request";
+
+	case arm_disarm_reason_t::unit_test: return "unit tests";
+
+	case arm_disarm_reason_t::rc_button: return "RC (button)";
+
+	case arm_disarm_reason_t::failsafe: return "failsafe";
+	}
+
+	return "";
+};
 
 #if defined(BOARD_HAS_POWER_CONTROL)
 static orb_advert_t tune_control_pub = nullptr;
@@ -219,6 +267,42 @@ static bool broadcast_vehicle_command(const uint32_t cmd, const float param1 = N
 }
 #endif
 
+Commander::Commander() :
+	ModuleParams(nullptr)
+{
+	_vehicle_land_detected.landed = true;
+
+	_vehicle_status.system_id = 1;
+	_vehicle_status.component_id = 1;
+
+	_vehicle_status.system_type = 0;
+	_vehicle_status.vehicle_type = vehicle_status_s::VEHICLE_TYPE_UNKNOWN;
+
+	_vehicle_status.nav_state = _user_mode_intention.get();
+	_vehicle_status.nav_state_user_intention = _user_mode_intention.get();
+	_vehicle_status.nav_state_timestamp = hrt_absolute_time();
+
+	/* mark all signals lost as long as they haven't been found */
+	_vehicle_status.gcs_connection_lost = true;
+
+	_vehicle_status.power_input_valid = true;
+
+	// default for vtol is rotary wing
+	_vtol_vehicle_status.vehicle_vtol_state = vtol_vehicle_status_s::VEHICLE_VTOL_STATE_MC;
+
+	_param_mav_comp_id = param_find("MAV_COMP_ID");
+	_param_mav_sys_id = param_find("MAV_SYS_ID");
+	_param_mav_type = param_find("MAV_TYPE");
+	_param_rc_map_fltmode = param_find("RC_MAP_FLTMODE");
+
+	updateParameters();
+}
+
+Commander::~Commander()
+{
+	perf_free(_loop_perf);
+	perf_free(_preflight_check_perf);
+}
 
 int Commander::custom_command(int argc, char *argv[])
 {
@@ -457,84 +541,9 @@ int Commander::custom_command(int argc, char *argv[])
 		return (ret ? 0 : 1);
 	}
 
-
 #endif
 
 	return print_usage("unknown command");
-}
-
-static constexpr const char *arm_disarm_reason_str(arm_disarm_reason_t calling_reason)
-{
-	switch (calling_reason) {
-	case arm_disarm_reason_t::transition_to_standby: return "";
-
-	case arm_disarm_reason_t::rc_stick: return "RC";
-
-	case arm_disarm_reason_t::rc_switch: return "RC (switch)";
-
-	case arm_disarm_reason_t::command_internal: return "internal command";
-
-	case arm_disarm_reason_t::command_external: return "external command";
-
-	case arm_disarm_reason_t::mission_start: return "mission start";
-
-	case arm_disarm_reason_t::auto_disarm_land: return "landing";
-
-	case arm_disarm_reason_t::auto_disarm_preflight: return "auto preflight disarming";
-
-	case arm_disarm_reason_t::kill_switch: return "kill-switch";
-
-	case arm_disarm_reason_t::lockdown: return "lockdown";
-
-	case arm_disarm_reason_t::failure_detector: return "failure detector";
-
-	case arm_disarm_reason_t::shutdown: return "shutdown request";
-
-	case arm_disarm_reason_t::unit_test: return "unit tests";
-
-	case arm_disarm_reason_t::rc_button: return "RC (button)";
-
-	case arm_disarm_reason_t::failsafe: return "failsafe";
-	}
-
-	return "";
-};
-
-Commander::Commander() :
-	ModuleParams(nullptr)
-{
-	_vehicle_land_detected.landed = true;
-
-	_vehicle_status.system_id = 1;
-	_vehicle_status.component_id = 1;
-
-	_vehicle_status.system_type = 0;
-	_vehicle_status.vehicle_type = vehicle_status_s::VEHICLE_TYPE_UNKNOWN;
-
-	_vehicle_status.nav_state = _user_mode_intention.get();
-	_vehicle_status.nav_state_user_intention = _user_mode_intention.get();
-	_vehicle_status.nav_state_timestamp = hrt_absolute_time();
-
-	/* mark all signals lost as long as they haven't been found */
-	_vehicle_status.gcs_connection_lost = true;
-
-	_vehicle_status.power_input_valid = true;
-
-	// default for vtol is rotary wing
-	_vtol_vehicle_status.vehicle_vtol_state = vtol_vehicle_status_s::VEHICLE_VTOL_STATE_MC;
-
-	_param_mav_comp_id = param_find("MAV_COMP_ID");
-	_param_mav_sys_id = param_find("MAV_SYS_ID");
-	_param_mav_type = param_find("MAV_TYPE");
-	_param_rc_map_fltmode = param_find("RC_MAP_FLTMODE");
-
-	updateParameters();
-}
-
-Commander::~Commander()
-{
-	perf_free(_loop_perf);
-	perf_free(_preflight_check_perf);
 }
 
 transition_result_t Commander::arm(arm_disarm_reason_t calling_reason, bool run_preflight_checks)

@@ -295,7 +295,7 @@ private:
 	bool _avoidance_system_lost{false};
 	bool _circuit_breaker_flight_termination_disabled{false};
 
-	bool _failsafe_old{false};   
+	bool _failsafe_old{false};
 	bool _failsafe_user_override_request{false}; ///< override request due to stick movements
 	bool _flight_termination_triggered{false};
 
