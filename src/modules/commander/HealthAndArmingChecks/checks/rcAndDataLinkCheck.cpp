@@ -80,10 +80,10 @@ void RcAndDataLinkChecks::checkAndReport(const Context &context, Report &reporte
 		* This check can be configured via <param>COM_RC_IN_MODE</param> parameter.
 		* </profile>
 		*/
-		reporter.armingCheckFailure(NavModes::None,
-					    health_component_t::remote_control,
-					    events::ID("check_rc_dl_no_rc"),
-					    events::Log::Info, "No manual control input");
+		reporter.warning((NavModes)(~reporter.failsafeFlags().mode_req_manual_control),
+				 health_component_t::remote_control,
+				 events::ID("check_rc_dl_no_rc"),
+				 events::Log::Info, "No manual control input");
 
 		if (reporter.mavlink_log_pub()) {
 			mavlink_log_info(reporter.mavlink_log_pub(), "Preflight Fail: No manual control input\t");

@@ -73,6 +73,12 @@ void Report::armingCheckFailure(NavModes required_modes, HealthComponentIndex co
 	addEvent(event_id, log_levels, message, (uint32_t)reportedModes(required_modes), component.index);
 }
 
+void Report::warning(NavModes required_modes, HealthComponentIndex component, uint32_t event_id,
+		     const events::LogLevels &log_levels, const char *message)
+{
+	addEvent(event_id, log_levels, message, (uint32_t)reportedModes(required_modes), component.index);
+}
+
 Report::EventBufferHeader *Report::addEventToBuffer(uint32_t event_id, const events::LogLevels &log_levels,
 		uint32_t modes, unsigned args_size)
 {

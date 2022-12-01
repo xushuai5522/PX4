@@ -234,7 +234,7 @@ class SourceParser(object):
                                 raise Exception("Could not extract event ID from {:}".format(args_split[0]))
                             event.name = event_name
                             event.message = parse_message(args_split[2])
-                    elif call in ['reporter.healthFailure', 'reporter.armingCheckFailure']:
+                    elif call in ['reporter.healthFailure', 'reporter.armingCheckFailure', 'reporter.warning']:
                         assert len(args_split) == num_args + 5, \
                             "Unexpected Number of arguments for: {:}, {:}".format(args_split, num_args)
                         m = self.re_event_id.search(args_split[2])

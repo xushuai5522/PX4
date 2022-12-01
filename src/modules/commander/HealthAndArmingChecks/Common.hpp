@@ -246,6 +246,16 @@ public:
 				const events::LogLevels &log_levels, const char *message);
 
 	/**
+	 * Report a warning only in certain modes.
+	 */
+	template<typename... Args>
+	void warning(NavModes required_modes, HealthComponentIndex component, uint32_t event_id,
+		     const events::LogLevels &log_levels, const char *message, Args... args);
+
+	void warning(NavModes required_modes, HealthComponentIndex component, uint32_t event_id,
+		     const events::LogLevels &log_levels, const char *message);
+
+	/**
 	 * Clear can_run bits for certain modes. This will prevent mode switching and trigger failsafe if the
 	 * mode is being run.
 	 * @param modes affected modes
