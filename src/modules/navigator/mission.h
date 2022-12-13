@@ -84,26 +84,13 @@ public:
 
 	bool set_current_mission_index(uint16_t index);
 
-	bool land_start();
-	bool landing();
-
 	uint16_t get_land_start_index() const { return _land_start_index; }
 	bool get_land_start_available() const { return _land_start_index != _invalid_index; }
-	bool get_mission_finished() const { return _mission_type == MISSION_TYPE_NONE; }
-	bool get_mission_changed() const { return _mission_changed ; }
-	double get_landing_start_lat() { return _land_start_pos.lat; }
-	double get_landing_start_lon() { return _land_start_pos.lon; }
-	float get_landing_start_alt() { return _land_start_pos.alt; }
-
-	double get_landing_lat() { return _land_pos.lat; }
-	double get_landing_lon() { return _land_pos.lon; }
-	float get_landing_alt() { return _land_pos.alt; }
-	float get_landing_loiter_rad() { return _landing_loiter_radius; }
-
-	void set_closest_item_as_current();
 
 private:
 	void onMissionUpdate(bool has_mission_items_changed) override;
+
+	bool landing();
 
 	/**
 	 * Update mission topic
@@ -215,8 +202,6 @@ private:
 	uORB::SubscriptionData<vehicle_land_detected_s> _land_detected_sub{ORB_ID(vehicle_land_detected)};	/**< vehicle land detected subscription */
 	uORB::SubscriptionData<vehicle_status_s> _vehicle_status_sub{ORB_ID(vehicle_status)};	/**< vehicle status subscription */
 	uORB::SubscriptionData<vehicle_global_position_s> _global_pos_sub{ORB_ID(vehicle_global_position)};	/**< global position subscription */
-
-	float _landing_loiter_radius{0.f};
 
 	bool _is_current_planned_mission_item_valid{false};
 

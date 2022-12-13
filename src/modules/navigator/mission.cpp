@@ -246,37 +246,6 @@ Mission::set_current_mission_index(uint16_t index)
 	return false;
 }
 
-void
-Mission::set_closest_item_as_current()
-{
-	_is_current_planned_mission_item_valid = (setMissionToClosestItem(_global_pos_sub.get().lat,
-			_global_pos_sub.get().lon,
-			_global_pos_sub.get().alt, _navigator->get_home_position()->alt,
-			_vehicle_status_sub.get()) == EXIT_SUCCESS);
-}
-
-bool
-Mission::land_start()
-{
-	// if not currently landing, jump to do_land_start
-	if (hasMissionLandStart()) {
-		if (landing()) {
-			return true;
-
-		} else {
-			_is_current_planned_mission_item_valid = (goToMissionLandStart() == EXIT_SUCCESS);
-
-			if (!_is_current_planned_mission_item_valid) {
-				return false;
-			}
-
-			return landing();
-		}
-	}
-
-	return false;
-}
-
 bool
 Mission::landing()
 {
