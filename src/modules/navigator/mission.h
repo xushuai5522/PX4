@@ -90,8 +90,6 @@ public:
 private:
 	void onMissionUpdate(bool has_mission_items_changed) override;
 
-	bool landing();
-
 	/**
 	 * Update mission topic
 	 */
@@ -178,7 +176,7 @@ private:
 	/**
 	 * Reset mission
 	 */
-	void reset_mission(struct mission_s &mission);
+	void reset_mission();
 
 	/**
 	 * Returns true if we need to reset the mission (call this only when inactive)
@@ -206,6 +204,7 @@ private:
 	bool _is_current_planned_mission_item_valid{false};
 
 	bool _initialized_mission_checked{false};
+	bool _is_mission_valid{false};
 
 	bool _need_takeoff{true};					/**< if true, then takeoff must be performed before going to the first waypoint (if needed) */
 
@@ -218,7 +217,6 @@ private:
 
 	bool _need_mission_reset{false};
 	bool _system_disarmed_while_inactive{false};
-	bool _mission_changed{false}; /** < true if the mission changed since the mission mode was active */
 
 	// Work Item corresponds to the sub-mode set on the "MAV_CMD_DO_SET_MODE" MAVLink message
 	enum work_item_type {

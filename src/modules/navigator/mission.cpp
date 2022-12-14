@@ -73,10 +73,10 @@ Mission::Mission(Navigator *navigator) :
 void Mission::onMissionUpdate(bool has_mission_items_changed)
 {
 	_is_current_planned_mission_item_valid = true;
-	update_mission();
-
+	check_mission_valid();
 	if (isActive()) {
 		_navigator->reset_triplets();
+		update_mission();
 		set_mission_items();
 
 	} else {
@@ -90,10 +90,8 @@ void
 Mission::on_inactive()
 {
 	PlannedMissionInterface::update();
-
 	_land_detected_sub.update();
 	_vehicle_status_sub.update();
-
 
 	/* Need to check the initialized mission once, have to do it here, since we need to wait for the home position. */
 	if (_navigator->home_global_position_valid() && !_initialized_mission_checked) {
@@ -109,9 +107,6 @@ Mission::on_inactive()
 	{
 		_system_disarmed_while_inactive = true;
 	}
-
-	/* reset so current mission item gets restarted if mission was paused */
-	_work_item_type = WORK_ITEM_TYPE_DEFAULT;
 }
 
 void
@@ -140,13 +135,14 @@ Mission::on_activation()
 {
 	/* reset the current mission if needed */
 	if (need_to_reset_mission()) {
-		reset_mission(_mission);
-		update_mission();
+		reset_mission();
 		_navigator->reset_cruising_speed();
 	}
 	_need_mission_reset = true;
 	_system_disarmed_while_inactive = false;
 
+	check_mission_valid();
+	update_mission();
 	set_mission_items();
 
 	// unpause triggering if it was paused
@@ -160,8 +156,6 @@ Mission::on_active()
 	_land_detected_sub.update();
 	_vehicle_status_sub.update();
 	_global_pos_sub.update();
-
-	_mission_changed = false;
 
 	/* lets check if we reached the current mission item */
 	if (_mission_type != MISSION_TYPE_NONE && is_mission_item_reached_or_completed()) {
@@ -226,7 +220,7 @@ Mission::on_active()
 bool
 Mission::set_current_mission_index(uint16_t index)
 {
-	if (_navigator->get_mission_result()->valid && (index < _mission.count)) {
+	if (_is_mission_valid && (index < _mission.count)) {
 		_is_current_planned_mission_item_valid = (goToItem(index, true) == EXIT_SUCCESS);
 
 		if (!_is_current_planned_mission_item_valid) {
@@ -246,34 +240,16 @@ Mission::set_current_mission_index(uint16_t index)
 	return false;
 }
 
-bool
-Mission::landing()
-{
-	// vehicle is currently landing if
-	//  mission valid, still flying, and in the landing portion of mission
-
-	const bool mission_valid = _navigator->get_mission_result()->valid;
-	const bool on_landing_stage = hasMissionLandStart() && (_mission.current_seq >= _land_start_index);
-
-	return mission_valid && on_landing_stage;
-}
-
 void
 Mission::update_mission()
 {
-
-	bool failed = true;
 
 	/* Reset vehicle_roi
 	 * Missions that do not explicitly configure ROI would not override
 	 * an existing ROI setting from previous missions */
 	_navigator->reset_vroi();
 
-	check_mission_valid();
-
-	failed = !_navigator->get_mission_result()->valid;
-
-	if (!failed) {
+	if (_is_mission_valid) {
 		/* reset mission failure if we have an updated valid mission */
 		_navigator->get_mission_result()->failure = false;
 
@@ -283,20 +259,17 @@ Mission::update_mission()
 
 		/* reset work item if new mission has been accepted */
 		_work_item_type = WORK_ITEM_TYPE_DEFAULT;
-		_mission_changed = true;
 
-	} else {
-		PX4_ERR("mission update failed");
 	}
 
-	if (failed) {
+	if (!_is_mission_valid) {
 		// only warn if the check failed on merit
 		if ((int)_mission.count > 0) {
 			PX4_WARN("mission check failed");
+			// reset the mission
+			resetMission();
 		}
 
-		// reset the mission
-		resetMission();
 		_is_current_planned_mission_item_valid = false;
 	}
 
@@ -1129,18 +1102,19 @@ Mission::check_mission_valid()
 
 	MissionFeasibilityChecker _missionFeasibilityChecker(_navigator);
 
-	_navigator->get_mission_result()->valid =
+	_is_mission_valid =
 		_missionFeasibilityChecker.checkMissionFeasible(_mission,
 				_param_mis_dist_1wp.get(),
 				_param_mis_dist_wps.get());
 
+	_navigator->get_mission_result()->valid = _is_mission_valid;
 	_navigator->get_mission_result()->seq_total = _mission.count;
 	_navigator->increment_mission_instance_count();
 	_navigator->set_mission_result_updated();
 }
 
 void
-Mission::reset_mission(struct mission_s &mission)
+Mission::reset_mission()
 {
 	if (goToItem(0u, true) == EXIT_SUCCESS) {
 		resetMissionJumpCounter();

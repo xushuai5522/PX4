@@ -272,8 +272,6 @@ public:
 
 	void set_mission_failure_heading_timeout();
 
-	bool is_planned_mission() const { return _navigation_mode == &_mission; }
-
 	bool get_mission_start_land_available() { return _mission.get_land_start_available(); }
 
 	int  get_mission_landing_index() { return _mission.get_land_start_index(); }
