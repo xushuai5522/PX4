@@ -89,7 +89,7 @@ public:
 
 private:
 	// Work Item corresponds to the sub-mode set on the "MAV_CMD_DO_SET_MODE" MAVLink message
-	enum work_item_type {
+	enum class WorkItemType {
 		WORK_ITEM_TYPE_DEFAULT,		/**< default mission item */
 		WORK_ITEM_TYPE_TAKEOFF,		/**< takeoff before moving to waypoint */
 		WORK_ITEM_TYPE_MOVE_TO_LAND,	/**< move to land waypoint before descent */
@@ -97,12 +97,12 @@ private:
 		WORK_ITEM_TYPE_TRANSITON_AFTER_TAKEOFF,
 		WORK_ITEM_TYPE_MOVE_TO_LAND_AFTER_TRANSITION,
 		WORK_ITEM_TYPE_PRECISION_LAND
-	} _work_item_type{WORK_ITEM_TYPE_DEFAULT};	/**< current type of work to do (sub mission item) */
+	} _work_item_type{WorkItemType::WORK_ITEM_TYPE_DEFAULT};	/**< current type of work to do (sub mission item) */
 
-	enum {
+	enum class MissionType {
 		MISSION_TYPE_NONE,
 		MISSION_TYPE_MISSION
-	} _mission_type{MISSION_TYPE_NONE};
+	} _mission_type{MissionType::MISSION_TYPE_NONE};
 
 	void onMissionUpdate(bool has_mission_items_changed) override;
 
@@ -209,11 +209,11 @@ private:
 
 	void setMissionSetpoint(mission_item_s next_mission_items[], size_t &num_found_items);
 
-	work_item_type handleTakeoff(mission_item_s next_mission_items[], size_t &num_found_items);
+	WorkItemType handleTakeoff(mission_item_s next_mission_items[], size_t &num_found_items);
 
-	work_item_type handleLanding(mission_item_s next_mission_items[], size_t &num_found_items);
+	WorkItemType handleLanding(mission_item_s next_mission_items[], size_t &num_found_items);
 
-	work_item_type handleVtolTransition(mission_item_s next_mission_items[], size_t &num_found_items);
+	WorkItemType handleVtolTransition(mission_item_s next_mission_items[], size_t &num_found_items);
 
 
 	DEFINE_PARAMETERS(
