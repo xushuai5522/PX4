@@ -75,9 +75,14 @@ void Mission::onMissionUpdate(bool has_mission_items_changed)
 	_is_current_planned_mission_item_valid = true;
 	check_mission_valid();
 	if (isActive()) {
+		_mission_has_been_activated = true;
 		_navigator->reset_triplets();
 		update_mission();
 		set_mission_items();
+	}
+	else
+	{
+		_mission_has_been_activated = false;
 	}
 }
 
@@ -130,12 +135,10 @@ Mission::on_inactivation()
 void
 Mission::on_activation()
 {
-	/* reset the current mission if needed */
-	if (need_to_reset_mission()) {
-		reset_mission();
-		_navigator->reset_cruising_speed();
-	}
-	_need_mission_reset = true;
+	/* reset the current mission to the start sequence if needed.*/
+	checkMissionRestart();
+
+	_mission_has_been_activated = true;
 	_system_disarmed_while_inactive = false;
 
 	check_mission_valid();
@@ -218,10 +221,14 @@ bool
 Mission::set_current_mission_index(uint16_t index)
 {
 	if (_is_mission_valid && (index < _mission.count)) {
-		_is_current_planned_mission_item_valid = (goToItem(index, true) == EXIT_SUCCESS);
-
-		if (!_is_current_planned_mission_item_valid) {
+		if(goToItem(index, true) != EXIT_SUCCESS)
+		{
+			// Keep the old mission index (it was not updated by the interface) and report back.
 			return false;
+		}
+		else
+		{
+			_is_current_planned_mission_item_valid = true;
 		}
 
 		// update mission items if already in active mission
@@ -677,30 +684,20 @@ Mission::check_mission_valid()
 }
 
 void
-Mission::reset_mission()
+Mission::checkMissionRestart()
 {
-	if (goToItem(0u, true) == EXIT_SUCCESS) {
-		resetMissionJumpCounter();
+	if (_system_disarmed_while_inactive && _mission_has_been_activated) {
+		if (goToItem(0u, true) == EXIT_SUCCESS) {
+			_is_current_planned_mission_item_valid = true;
+			resetMissionJumpCounter();
+			_navigator->reset_cruising_speed();
 
-	} else {
-		mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Could not read mission.\t");
-		events::send(events::ID("mission_cannot_read_mission"), events::Log::Error, "Could not read mission");
-		initMission();
+		} else {
+			mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Could not read mission.\t");
+			events::send(events::ID("mission_cannot_read_mission"), events::Log::Error, "Could not read mission");
+			resetMission();
+		}
 	}
-
-	check_mission_valid();
-}
-
-bool
-Mission::need_to_reset_mission()
-{
-	/* reset mission state when disarmed */
-	if (_system_disarmed_while_inactive && _need_mission_reset) {
-		_need_mission_reset = false;
-		return true;
-	}
-
-	return false;
 }
 
 bool Mission::position_setpoint_equal(const position_setpoint_s *p1, const position_setpoint_s *p2) const

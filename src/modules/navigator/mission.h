@@ -192,12 +192,7 @@ private:
 	/**
 	 * Reset mission
 	 */
-	void reset_mission();
-
-	/**
-	 * Returns true if we need to reset the mission (call this only when inactive)
-	 */
-	bool need_to_reset_mission();
+	void checkMissionRestart();
 
 	bool position_setpoint_equal(const position_setpoint_s *p1, const position_setpoint_s *p2) const;
 
@@ -237,6 +232,6 @@ private:
 
 	hrt_abstime _time_mission_deactivated{0};
 
-	bool _need_mission_reset{false};
+	bool _mission_has_been_activated{false};
 	bool _system_disarmed_while_inactive{false};
 };
