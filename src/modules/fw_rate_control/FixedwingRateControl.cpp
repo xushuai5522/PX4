@@ -111,6 +111,7 @@ FixedwingRateControl::vehicle_manual_poll()
 				_rates_sp.thrust_body[0] = (_manual_control_setpoint.throttle + 1.f) * .5f;
 
 				_rate_sp_pub.publish(_rates_sp);
+				_rate_control.resetIntegral();
 
 			} else {
 				/* manual/direct control */
