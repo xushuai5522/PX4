@@ -266,8 +266,6 @@ private:
 
 	float _landing_loiter_radius{0.f};
 
-	bool _need_takeoff{true};					/**< if true, then takeoff must be performed before going to the first waypoint (if needed) */
-
 	hrt_abstime _time_mission_deactivated{0};
 
 	enum {
