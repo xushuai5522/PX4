@@ -65,13 +65,18 @@ RtlDirect::RtlDirect(Navigator *navigator) :
 	_param_fw_airspeed_trim = param_find("FW_AIRSPD_TRIM");
 	_param_mpc_xy_cruise = param_find("MPC_XY_CRUISE");
 	_param_rover_cruise_speed = param_find("GND_SPEED_THR_SC");
+
+	initMission();
 }
 
-void RtlDirect::initialize(bool enforce_rtl_alt)
+void RtlDirect::on_activation(bool enforce_rtl_alt)
 {
 	_global_pos_sub.update();
+	_local_pos_sub.update();
 	_land_detected_sub.update();
+	_vehicle_status_sub.update();
 	_home_pos_sub.update();
+	_wind_sub.update();
 
 	findRtlDestination();
 
@@ -95,6 +100,8 @@ void RtlDirect::initialize(bool enforce_rtl_alt)
 	_navigator->set_cruising_throttle();
 
 	set_rtl_item();
+
+	MissionBlock::on_active();
 }
 
 void RtlDirect::findRtlDestination()
@@ -119,20 +126,20 @@ void RtlDirect::findRtlDestination()
 		if ((_param_rtl_type.get() == 1) && !vtol_in_rw_mode) {
 			// Use the mission landing destination.
 			min_dist = dist;
-			setLandStartPosAsDestination();
+			setLandPosAsDestination();
 
 		} else if (dist < min_dist) {
 			min_dist = dist;
-			setLandStartPosAsDestination();
+			setLandPosAsDestination();
 		}
 	}
 
 	// compare to safe landing positions
 	mission_stats_entry_s stats;
 
-	if (dm_lock(dm_item_t::DM_KEY_SAFE_POINTS) != 0) {
+	/* if (dm_lock(dm_item_t::DM_KEY_SAFE_POINTS) != 0) {
 		return;
-	}
+	} */
 
 	int ret = dm_read(DM_KEY_SAFE_POINTS, 0, &stats, sizeof(mission_stats_entry_s));
 	int num_safe_points = 0;
@@ -158,7 +165,7 @@ void RtlDirect::findRtlDestination()
 		}
 	}
 
-	dm_unlock(dm_item_t::DM_KEY_SAFE_POINTS);
+	// dm_unlock(dm_item_t::DM_KEY_SAFE_POINTS);
 
 	if (_param_rtl_cone_half_angle_deg.get() > 0
 	    && _vehicle_status_sub.get().vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING) {
@@ -169,12 +176,12 @@ void RtlDirect::findRtlDestination()
 	}
 }
 
-void RtlDirect::setLandStartPosAsDestination()
+void RtlDirect::setLandPosAsDestination()
 {
-	_destination.alt = _land_start_pos.alt;
-	_destination.lat = _land_start_pos.lat;
-	_destination.lon = _land_start_pos.lon;
-	_destination.yaw = _home_pos_sub.get().yaw;;
+	_destination.alt = _land_pos.alt;
+	_destination.lat = _land_pos.lat;
+	_destination.lon = _land_pos.lon;
+	_destination.yaw = _home_pos_sub.get().yaw;
 }
 
 void RtlDirect::setSafepointAsDestination(const mission_safe_point_s &mission_safe_point)
@@ -239,12 +246,15 @@ float RtlDirect::calculate_return_alt_from_cone_half_angle(float cone_half_angle
 	return max(return_altitude_amsl, _global_pos_sub.get().alt);
 }
 
-void RtlDirect::update()
+void RtlDirect::on_active()
 {
+	PlannedMissionInterface::update();
 	_global_pos_sub.update();
 	_local_pos_sub.update();
 	_land_detected_sub.update();
 	_vehicle_status_sub.update();
+	_home_pos_sub.update();
+	_wind_sub.update();
 
 	if (_rtl_state != RTL_STATE_LANDED && is_mission_item_reached_or_completed()) {
 		advance_rtl();
@@ -255,6 +265,11 @@ void RtlDirect::update()
 		// Need to update the position and type on the current setpoint triplet.
 		_navigator->get_precland()->on_active();
 	}
+}
+
+void RtlDirect::on_inactive()
+{
+	PlannedMissionInterface::update();
 }
 
 void RtlDirect::set_rtl_item()

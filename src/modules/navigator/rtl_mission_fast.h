@@ -1,6 +1,6 @@
 /***************************************************************************
  *
- *   Copyright (c) 2013-2020 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2023 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,7 +31,7 @@
  *
  ****************************************************************************/
 /**
- * @file rtl.h
+ * @file rtl_mission_fast.h
  *
  * Helper class for RTL
  *
@@ -41,65 +41,31 @@
 
 #pragma once
 
-#include <drivers/drv_hrt.h>
-#include <px4_platform_common/module_params.h>
+#include "mission.h"
 
-#include "navigator_mode.h"
-#include "lib/mission/planned_mission_interface.h"
-#include "rtl_direct.h"
-#include "rtl_mission_fast.h"
-#include "rtl_mission_fast_reverse.h"
-
-#include <uORB/uORB.h>
-#include <uORB/Publication.hpp>
+#include <uORB/Subscription.hpp>
+#include <uORB/topics/home_position.h>
 #include <uORB/topics/rtl_time_estimate.h>
 
 class Navigator;
 
-class RTL : public NavigatorMode, protected PlannedMissionInterface, public ModuleParams
+class RtlMissionFast : public MissionBase
 {
 public:
-	RTL(Navigator *navigator);
+	RtlMissionFast(Navigator *navigator);
+	~RtlMissionFast() = default;
 
-	~RTL() = default;
-
-	enum class RtlType {
-		RTL_DIRECT,
-		RTL_MISSION_FAST,
-		RTL_MISSION_FAST_REVERSE,
-	};
-
-	void on_inactivation() override;
-	void on_inactive() override;
 	void on_activation() override;
 	void on_active() override;
+	void on_inactive() override;
 
-	void initialize() override {};
-
-	void set_return_alt_min(bool min) { _enforce_rtl_alt = min; }
+	rtl_time_estimate_s calc_rtl_time_estimate();
 
 private:
-	void onMissionUpdate(bool has_mission_items_changed) override {};
+	bool setNextMissionItem() override;
+	void setActiveMissionItems() override;
+	void handleLanding(WorkItemType &new_work_item_type);
+	bool do_need_move_to_land();
 
-	void setRtlType();
-
-	hrt_abstime _destination_check_time{0};
-
-	RtlType _rtl_type{RtlType::RTL_DIRECT};
-
-	RtlDirect _rtl_direct;
-
-	RtlMissionFast _rtl_mission;
-
-	RtlMissionFastReverse _rtl_mission_reverse;
-
-	bool _enforce_rtl_alt{false};
-
-	DEFINE_PARAMETERS(
-		(ParamInt<px4::params::RTL_TYPE>)          _param_rtl_type
-	)
-
-	uORB::Publication<rtl_time_estimate_s> _rtl_time_estimate_pub{ORB_ID(rtl_time_estimate)};
-
-
+	uORB::SubscriptionData<home_position_s> _home_pos_sub{ORB_ID(home_position)};		/**< home position subscription */
 };

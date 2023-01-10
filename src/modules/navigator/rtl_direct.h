@@ -1,6 +1,6 @@
 /***************************************************************************
  *
- *   Copyright (c) 2013-2020 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2023 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,7 +31,7 @@
  *
  ****************************************************************************/
 /**
- * @file rtl.h
+ * @file rtl_direct.h
  *
  * Helper class for RTL
  *
@@ -66,17 +66,26 @@ public:
 	~RtlDirect() = default;
 
 	/**
-	 * @brief Initialize
+	 * @brief On activation.
+	 * Initialize the return to launch calculations.
 	 *
 	 * @param[in] enforce_rtl_alt boolean if the minimal return to launch altitude should be enforced at the beginning of the return, even when the current vehicle altitude is above.
 	 */
-	void initialize(bool enforce_rtl_alt);
+	void on_activation(bool enforce_rtl_alt);
 
 	/**
-	 * @brief Update the return to launch calculation and set new setpoints for controller if necessary.
+	 * @brief on active
+	 * Update the return to launch calculation and set new setpoints for controller if necessary.
 	 *
 	 */
-	void update();
+	void on_active() override;
+
+	/**
+	 * @brief on inactive
+	 * Update states while return to launch caluclation is not active.
+	 *
+	 */
+	void on_inactive() override;
 
 	/**
 	 * @brief Calculate the estimated time needed to return to launch.
@@ -192,7 +201,7 @@ private:
 	 * @brief Set the position of the land start marker in the planned mission as destination.
 	 *
 	 */
-	void setLandStartPosAsDestination();
+	void setLandPosAsDestination();
 
 	/**
 	 * @brief Set the safepoint as destination.
