@@ -61,8 +61,7 @@ public:
 
 	~RTL() = default;
 
-	enum RtlType
-	{
+	enum RtlType {
 		RTL_DIRECT,
 		RTL_MISSION_FAST,
 		RTL_MISSION_FAST_REVERSE,

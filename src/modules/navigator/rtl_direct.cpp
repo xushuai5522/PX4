@@ -85,7 +85,7 @@ void RtlDirect::initialize(bool enforce_rtl_alt)
 		// If rtl_alt_min is true then forcing altitude change even if above.
 		_rtl_state = RTL_STATE_CLIMB;
 
-	}else {
+	} else {
 		// Otherwise go start with climb
 		_rtl_state = RTL_STATE_RETURN;
 	}
@@ -108,22 +108,20 @@ void RtlDirect::findRtlDestination()
 	// get distance to home position
 	float min_dist{get_distance_to_next_waypoint(_global_pos_sub.get().lat, _global_pos_sub.get().lon, _destination.lat, _destination.lon)};
 
-	const bool vtol_in_rw_mode = _vehicle_status_sub.get().is_vtol && (_vehicle_status_sub.get().vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING);
+	const bool vtol_in_rw_mode = _vehicle_status_sub.get().is_vtol
+				     && (_vehicle_status_sub.get().vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING);
 
 	// consider the mission landing if available and allowed
 	if (((_param_rtl_type.get() == 1) || (_param_rtl_type.get() == 3)) && hasMissionLandStart()) {
 		float dist{get_distance_to_next_waypoint(_global_pos_sub.get().lat, _global_pos_sub.get().lon, _land_start_pos.lat, _land_start_pos.lon)};
 
 		// always find closest destination if in hover and VTOL
-		if((_param_rtl_type.get() == 1) && !vtol_in_rw_mode)
-		{
+		if ((_param_rtl_type.get() == 1) && !vtol_in_rw_mode) {
 			// Use the mission landing destination.
 			min_dist = dist;
 			setLandStartPosAsDestination();
 
-		}
-		else if (dist < min_dist)
-		{
+		} else if (dist < min_dist) {
 			min_dist = dist;
 			setLandStartPosAsDestination();
 		}
@@ -131,10 +129,11 @@ void RtlDirect::findRtlDestination()
 
 	// compare to safe landing positions
 	mission_stats_entry_s stats;
-	if(dm_lock(dm_item_t::DM_KEY_SAFE_POINTS)!= 0)
-	{
+
+	if (dm_lock(dm_item_t::DM_KEY_SAFE_POINTS) != 0) {
 		return;
 	}
+
 	int ret = dm_read(DM_KEY_SAFE_POINTS, 0, &stats, sizeof(mission_stats_entry_s));
 	int num_safe_points = 0;
 
@@ -200,7 +199,7 @@ void RtlDirect::setSafepointAsDestination(const mission_safe_point_s &mission_sa
 	default:
 		mavlink_log_critical(_navigator->get_mavlink_log_pub(), "RTL: unsupported MAV_FRAME\t");
 		events::send<uint8_t>(events::ID("rtl_unsupported_mav_frame"), events::Log::Error, "RTL: unsupported MAV_FRAME ({1})",
-					mission_safe_point.frame);
+				      mission_safe_point.frame);
 		break;
 	}
 }
@@ -208,7 +207,8 @@ void RtlDirect::setSafepointAsDestination(const mission_safe_point_s &mission_sa
 float RtlDirect::calculate_return_alt_from_cone_half_angle(float cone_half_angle_deg)
 {
 	// horizontal distance to destination
-	const float destination_dist = get_distance_to_next_waypoint(_global_pos_sub.get().lat, _global_pos_sub.get().lon, _destination.lat, _destination.lon);
+	const float destination_dist = get_distance_to_next_waypoint(_global_pos_sub.get().lat, _global_pos_sub.get().lon,
+				       _destination.lat, _destination.lon);
 
 	// minium rtl altitude to use when outside of horizontal acceptance radius of target position.
 	// We choose the minimum height to be two times the distance from the land position in order to
@@ -263,7 +263,8 @@ void RtlDirect::set_rtl_item()
 
 	position_setpoint_triplet_s *pos_sp_triplet = _navigator->get_position_setpoint_triplet();
 
-	const float destination_dist = get_distance_to_next_waypoint(_destination.lat, _destination.lon, _global_pos_sub.get().lat, _global_pos_sub.get().lon);
+	const float destination_dist = get_distance_to_next_waypoint(_destination.lat, _destination.lon,
+				       _global_pos_sub.get().lat, _global_pos_sub.get().lon);
 	const float loiter_altitude = math::min(_destination.alt + _param_rtl_descend_alt.get(), _rtl_alt);
 
 	const RTLHeadingMode rtl_heading_mode = static_cast<RTLHeadingMode>(_param_rtl_hdg_md.get());
@@ -325,7 +326,8 @@ void RtlDirect::set_rtl_item()
 
 			if (rtl_heading_mode == RTLHeadingMode::RTL_NAVIGATION_HEADING &&
 			    destination_dist > _param_rtl_min_dist.get()) {
-				_mission_item.yaw = get_bearing_to_next_waypoint(_global_pos_sub.get().lat, _global_pos_sub.get().lon, _destination.lat, _destination.lon);
+				_mission_item.yaw = get_bearing_to_next_waypoint(_global_pos_sub.get().lat, _global_pos_sub.get().lon, _destination.lat,
+						    _destination.lon);
 
 			} else if (rtl_heading_mode == RTLHeadingMode::RTL_DESTINATION_HEADING ||
 				   destination_dist < _param_rtl_min_dist.get()) {
@@ -359,10 +361,12 @@ void RtlDirect::set_rtl_item()
 			_mission_item.altitude_is_relative = false;
 
 			// Except for vtol which might be still off here and should point towards this location.
-			const float d_current = get_distance_to_next_waypoint(_global_pos_sub.get().lat, _global_pos_sub.get().lon, _mission_item.lat, _mission_item.lon);
+			const float d_current = get_distance_to_next_waypoint(_global_pos_sub.get().lat, _global_pos_sub.get().lon,
+						_mission_item.lat, _mission_item.lon);
 
 			if (_vehicle_status_sub.get().is_vtol && (d_current > _navigator->get_acceptance_radius())) {
-				_mission_item.yaw = get_bearing_to_next_waypoint(_global_pos_sub.get().lat, _global_pos_sub.get().lon, _mission_item.lat, _mission_item.lon);
+				_mission_item.yaw = get_bearing_to_next_waypoint(_global_pos_sub.get().lat, _global_pos_sub.get().lon,
+						    _mission_item.lat, _mission_item.lon);
 
 			} else if (rtl_heading_mode == RTLHeadingMode::RTL_CURRENT_HEADING) {
 				_mission_item.yaw = _local_pos_sub.get().heading;
@@ -434,7 +438,8 @@ void RtlDirect::set_rtl_item()
 			_mission_item.altitude_is_relative = false;
 
 			if (rtl_heading_mode == RTLHeadingMode::RTL_NAVIGATION_HEADING) {
-				_mission_item.yaw = get_bearing_to_next_waypoint(_global_pos_sub.get().lat, _global_pos_sub.get().lon, _destination.lat, _destination.lon);
+				_mission_item.yaw = get_bearing_to_next_waypoint(_global_pos_sub.get().lat, _global_pos_sub.get().lon, _destination.lat,
+						    _destination.lon);
 
 			} else if (rtl_heading_mode == RTLHeadingMode::RTL_DESTINATION_HEADING) {
 				_mission_item.yaw = _destination.yaw;
@@ -466,7 +471,8 @@ void RtlDirect::set_rtl_item()
 			_mission_item.altitude_is_relative = false;
 
 			if (rtl_heading_mode == RTLHeadingMode::RTL_NAVIGATION_HEADING) {
-				_mission_item.yaw = get_bearing_to_next_waypoint(_global_pos_sub.get().lat, _global_pos_sub.get().lon, _destination.lat, _destination.lon);
+				_mission_item.yaw = get_bearing_to_next_waypoint(_global_pos_sub.get().lat, _global_pos_sub.get().lon, _destination.lat,
+						    _destination.lon);
 
 			} else if (rtl_heading_mode == RTLHeadingMode::RTL_DESTINATION_HEADING) {
 				_mission_item.yaw = _destination.yaw;
@@ -625,10 +631,11 @@ rtl_time_estimate_s RtlDirect::calc_rtl_time_estimate()
 	rtl_time_estimate_s rtl_time_estimate{};
 
 	RTLState start_state_for_estimate{RTL_STATE_NONE};
-	if(isActive())
-	{
+
+	if (isActive()) {
 		start_state_for_estimate = _rtl_state;
 	}
+
 	// Calculate RTL time estimate only when there is a valid home position
 	// TODO: Also check if vehicle position is valid
 	if (!_navigator->home_global_position_valid()) {

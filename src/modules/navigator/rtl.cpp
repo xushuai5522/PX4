@@ -66,6 +66,7 @@ void RTL::on_inactive()
 
 	// Limit inactive calculation to 1Hz
 	hrt_abstime now{hrt_absolute_time()};
+
 	if ((now - _destination_check_time) > 1_s) {
 		_destination_check_time = now;
 
@@ -77,19 +78,15 @@ void RTL::on_inactive()
 void RTL::setRtlType()
 {
 
-	if(_param_rtl_type.get()==2)
-	{
-		if(hasMissionLandStart())
-		{
+	if (_param_rtl_type.get() == 2) {
+		if (hasMissionLandStart()) {
 			_rtl_type = RTL_MISSION_FAST;
-		}
-		else
-		{
+
+		} else {
 			_rtl_type = RTL_MISSION_FAST_REVERSE;
 		}
-	}
-	else
-	{
+
+	} else {
 		_rtl_type = RTL_DIRECT;
 	}
 }
