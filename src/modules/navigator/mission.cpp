@@ -92,6 +92,7 @@ MissionBase::on_inactive()
 	PlannedMissionInterface::update();
 	_land_detected_sub.update();
 	_vehicle_status_sub.update();
+	_global_pos_sub.update();
 
 	/* Need to check the initialized mission once, have to do it here, since we need to wait for the home position. */
 	if (_navigator->home_global_position_valid() && !_initialized_mission_checked) {
@@ -351,6 +352,8 @@ void MissionBase::setEndOfMissionItems()
 
 	publish_navigator_mission_item(); // for logging
 	_navigator->set_position_setpoint_triplet_updated();
+
+	_mission_type = MissionType::MISSION_TYPE_NONE;
 }
 
 void
@@ -971,7 +974,7 @@ void Mission::handleTakeoff(WorkItemType &new_work_item_type, mission_item_s nex
 
 		/* check if the vtol_takeoff waypoint is on top of us */
 		if (do_need_move_to_takeoff()) {
-			new_work_item_type = WorkItemType::WORK_ITEM_TYPE_TRANSITON_AFTER_TAKEOFF;
+			new_work_item_type = WorkItemType::WORK_ITEM_TYPE_TRANSITON;
 		}
 
 		set_vtol_transition_item(&_mission_item, vtol_vehicle_status_s::VEHICLE_VTOL_STATE_FW);
@@ -983,7 +986,7 @@ void Mission::handleTakeoff(WorkItemType &new_work_item_type, mission_item_s nex
 
 	/* takeoff completed and transitioned, move to takeoff wp as fixed wing */
 	if (_mission_item.nav_cmd == NAV_CMD_VTOL_TAKEOFF
-	    && _work_item_type == WorkItemType::WORK_ITEM_TYPE_TRANSITON_AFTER_TAKEOFF) {
+	    && _work_item_type == WorkItemType::WORK_ITEM_TYPE_TRANSITON) {
 
 		new_work_item_type = WorkItemType::WORK_ITEM_TYPE_DEFAULT;
 		_mission_item.nav_cmd = NAV_CMD_WAYPOINT;
@@ -1000,7 +1003,7 @@ void Mission::handleLanding(WorkItemType &new_work_item_type, mission_item_s nex
 	/* move to land wp as fixed wing */
 	if (_mission_item.nav_cmd == NAV_CMD_VTOL_LAND
 	    && (_work_item_type == WorkItemType::WORK_ITEM_TYPE_DEFAULT
-		|| _work_item_type == WorkItemType::WORK_ITEM_TYPE_TRANSITON_AFTER_TAKEOFF)
+		|| _work_item_type == WorkItemType::WORK_ITEM_TYPE_TRANSITON)
 	    && !_land_detected_sub.get().landed) {
 
 		new_work_item_type = WorkItemType::WORK_ITEM_TYPE_MOVE_TO_LAND;

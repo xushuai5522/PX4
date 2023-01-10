@@ -77,10 +77,10 @@ public:
 	MissionBase(Navigator *navigator);
 	~MissionBase() override = default;
 
-	void on_inactive() override;
-	void on_inactivation() override;
-	void on_activation() override;
-	void on_active() override;
+	virtual void on_inactive() override;
+	virtual void on_inactivation() override;
+	virtual void on_activation() override;
+	virtual void on_active() override;
 
 protected:
 	// Work Item corresponds to the sub-mode set on the "MAV_CMD_DO_SET_MODE" MAVLink message
@@ -89,7 +89,7 @@ protected:
 		WORK_ITEM_TYPE_TAKEOFF,		/**< takeoff before moving to waypoint */
 		WORK_ITEM_TYPE_MOVE_TO_LAND,	/**< move to land waypoint before descent */
 		WORK_ITEM_TYPE_ALIGN,		/**< align for next waypoint */
-		WORK_ITEM_TYPE_TRANSITON_AFTER_TAKEOFF,
+		WORK_ITEM_TYPE_TRANSITON,
 		WORK_ITEM_TYPE_MOVE_TO_LAND_AFTER_TRANSITION,
 		WORK_ITEM_TYPE_PRECISION_LAND
 	} _work_item_type{WorkItemType::WORK_ITEM_TYPE_DEFAULT};	/**< current type of work to do (sub mission item) */
@@ -231,8 +231,6 @@ private:
 	 * Calculate takeoff height for mission item considering ground clearance
 	 */
 	float calculate_takeoff_altitude(struct mission_item_s *mission_item);
-
-	void setEndOfMissionSetpoint();
 
 	void setActiveMissionItems() override;
 
