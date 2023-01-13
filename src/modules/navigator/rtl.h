@@ -69,6 +69,7 @@ public:
 		RTL_DIRECT_MISSION_LAND,
 		RTL_MISSION_FAST,
 		RTL_MISSION_FAST_REVERSE,
+		VTOL_LAND
 	};
 
 	void on_inactivation() override;
