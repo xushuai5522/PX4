@@ -59,16 +59,18 @@ RTL::RTL(Navigator *navigator) :
 
 void RTL::on_inactivation()
 {
-	switch(_rtl_type)
-	{
+	switch (_rtl_type) {
 	case RtlType::RTL_MISSION_FAST:
 		_rtl_mission.on_inactivation();
 		break;
+
 	case RtlType::RTL_MISSION_FAST_REVERSE:
 		_rtl_mission_reverse.on_inactivation();
 		break;
+
 	case RtlType::RTL_DIRECT:
 		_rtl_direct.on_inactivation();
+
 	default:
 		break;
 	}
@@ -91,37 +93,43 @@ void RTL::on_inactive()
 		_destination_check_time = now;
 
 		rtl_time_estimate_s estimated_time;
-		switch(_rtl_type)
-		{
+
+		switch (_rtl_type) {
 		case RtlType::RTL_DIRECT:
 			estimated_time = _rtl_direct.calc_rtl_time_estimate();
 			break;
+
 		case RtlType::RTL_MISSION_FAST:
 			estimated_time = _rtl_mission.calc_rtl_time_estimate();
 			break;
+
 		case RtlType::RTL_MISSION_FAST_REVERSE:
 			estimated_time = _rtl_mission_reverse.calc_rtl_time_estimate();
 			break;
+
 		default:
 			break;
 		}
+
 		_rtl_time_estimate_pub.publish(estimated_time);
 	}
 }
 
 void RTL::on_activation()
 {
-	switch(_rtl_type)
-	{
+	switch (_rtl_type) {
 	case RtlType::RTL_MISSION_FAST:
 		_rtl_mission.on_activation();
 		break;
+
 	case RtlType::RTL_MISSION_FAST_REVERSE:
 		_rtl_mission_reverse.on_activation();
 		break;
+
 	case RtlType::RTL_DIRECT:
 		_rtl_direct.on_activation(_enforce_rtl_alt);
 		break;
+
 	default:
 		break;
 	}
@@ -131,23 +139,25 @@ void RTL::on_active()
 {
 	PlannedMissionInterface::update();
 
-	switch(_rtl_type)
-	{
+	switch (_rtl_type) {
 	case RtlType::RTL_MISSION_FAST:
 		_rtl_mission.on_active();
 		_rtl_mission_reverse.on_inactive();
 		_rtl_direct.on_inactive();
 		break;
+
 	case RtlType::RTL_MISSION_FAST_REVERSE:
 		_rtl_mission_reverse.on_active();
 		_rtl_mission.on_inactive();
 		_rtl_direct.on_inactive();
 		break;
+
 	case RtlType::RTL_DIRECT:
 		_rtl_direct.on_active();
 		_rtl_mission_reverse.on_inactive();
 		_rtl_mission.on_inactive();
 		break;
+
 	default:
 		break;
 	}

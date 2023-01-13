@@ -830,6 +830,7 @@ void Mission::setActiveMissionItems()
 			/* vehicle will be paused on current waypoint, don't set next item */
 			pos_sp_triplet->next.valid = false;
 		}
+
 	} else if (item_contains_gate(_mission_item)) {
 		// The mission item is a gate, let's check if the next item in the list provides
 		// a position to go towards.
