@@ -53,12 +53,14 @@ RtlMissionFastReverse::RtlMissionFastReverse(Navigator *navigator) :
 
 void RtlMissionFastReverse::on_activation()
 {
-	setMissionToClosestItem(_global_pos_sub.get().lat, _global_pos_sub.get().lon, _global_pos_sub.get().alt, _home_pos_sub.get().alt, _vehicle_status_sub.get());
-	if (_land_detected_sub.get().landed)
-	{
-		// already landed, no need to do anything, invalidad the position mission item.
+	setMissionToClosestItem(_global_pos_sub.get().lat, _global_pos_sub.get().lon, _global_pos_sub.get().alt,
+				_home_pos_sub.get().alt, _vehicle_status_sub.get());
+
+	if (_land_detected_sub.get().landed) {
+		// already landed, no need to do anything, invalidate the position mission item.
 		_is_current_planned_mission_item_valid = false;
 	}
+
 	MissionBase::on_activation();
 }
 
@@ -83,11 +85,11 @@ void RtlMissionFastReverse::setActiveMissionItems()
 {
 	WorkItemType new_work_item_type{WorkItemType::WORK_ITEM_TYPE_DEFAULT};
 	position_setpoint_triplet_s *pos_sp_triplet = _navigator->get_position_setpoint_triplet();
+
 	// Transition to fixed wing if necessary.
 	if (_vehicle_status_sub.get().vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING &&
-		_vehicle_status_sub.get().is_vtol &&
-		!_land_detected_sub.get().landed)
-	{
+	    _vehicle_status_sub.get().is_vtol &&
+	    !_land_detected_sub.get().landed && _work_item_type == WorkItemType::WORK_ITEM_TYPE_DEFAULT) {
 		set_vtol_transition_item(&_mission_item, vtol_vehicle_status_s::VEHICLE_VTOL_STATE_FW);
 		_mission_item.yaw = _navigator->get_local_position()->heading;
 
@@ -98,18 +100,29 @@ void RtlMissionFastReverse::setActiveMissionItems()
 
 	} else if (item_contains_position(_mission_item)) {
 		if (_mission_item.nav_cmd == NAV_CMD_TAKEOFF ||
-			_mission_item.nav_cmd == NAV_CMD_VTOL_TAKEOFF)
-		{
+		    _mission_item.nav_cmd == NAV_CMD_VTOL_TAKEOFF) {
 			handleLanding(new_work_item_type);
-		}
-		else
-		{
-			// convert mission item to a simple waypoint
-			_mission_item.nav_cmd = NAV_CMD_WAYPOINT;
+
+		} else {
+			// convert mission item to a simple waypoint, keep loiter to alt
+			if (_mission_item.nav_cmd != NAV_CMD_LOITER_TO_ALT) {
+				_mission_item.nav_cmd = NAV_CMD_WAYPOINT;
+			}
+
 			_mission_item.autocontinue = true;
 			_mission_item.time_inside = 0.0f;
 
 			pos_sp_triplet->previous = pos_sp_triplet->current;
+		}
+
+		mission_item_s next_mission_item;
+		size_t num_found_items = 0;
+		getPreviousPositionItems(_mission.current_seq - 1, &next_mission_item, num_found_items, 1u);
+
+		if (num_found_items > 0) {
+
+			mission_apply_limitation(next_mission_item);
+			mission_item_to_position_setpoint(next_mission_item, &pos_sp_triplet->next);
 		}
 
 		mission_apply_limitation(_mission_item);
@@ -137,15 +150,13 @@ void RtlMissionFastReverse::handleLanding(WorkItemType &new_work_item_type)
 	position_setpoint_triplet_s *pos_sp_triplet = _navigator->get_position_setpoint_triplet();
 
 	bool needs_to_land = !_land_detected_sub.get().landed &&
-				((_mission_item.nav_cmd == NAV_CMD_VTOL_TAKEOFF) || (_mission_item.nav_cmd == NAV_CMD_TAKEOFF));
+			     ((_mission_item.nav_cmd == NAV_CMD_VTOL_TAKEOFF) || (_mission_item.nav_cmd == NAV_CMD_TAKEOFF));
 	bool needs_vtol_landing = _vehicle_status_sub.get().is_vtol &&
-				(_vehicle_status_sub.get().vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING) &&
-				needs_to_land;
+				  (_vehicle_status_sub.get().vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING) &&
+				  needs_to_land;
 
-	if (needs_vtol_landing)
-	{
-		if (_work_item_type == WorkItemType::WORK_ITEM_TYPE_DEFAULT)
-	  	{
+	if (needs_vtol_landing) {
+		if (_work_item_type == WorkItemType::WORK_ITEM_TYPE_DEFAULT) {
 			new_work_item_type = WorkItemType::WORK_ITEM_TYPE_MOVE_TO_LAND;
 
 			float altitude = _global_pos_sub.get().alt;
@@ -160,11 +171,13 @@ void RtlMissionFastReverse::handleLanding(WorkItemType &new_work_item_type)
 			_mission_item.autocontinue = true;
 			_mission_item.time_inside = 0.0f;
 			_mission_item.vtol_back_transition = true;
+
+			pos_sp_triplet->previous.valid = false;
+
 		}
 
 		/* transition to MC */
-		if (_work_item_type == WorkItemType::WORK_ITEM_TYPE_MOVE_TO_LAND)
-		{
+		if (_work_item_type == WorkItemType::WORK_ITEM_TYPE_MOVE_TO_LAND) {
 
 			set_vtol_transition_item(&_mission_item, vtol_vehicle_status_s::VEHICLE_VTOL_STATE_MC);
 			_mission_item.altitude = _global_pos_sub.get().alt;
@@ -177,18 +190,18 @@ void RtlMissionFastReverse::handleLanding(WorkItemType &new_work_item_type)
 			// if the vehicle drifted off the path during back-transition it should just go straight to the landing point
 			pos_sp_triplet->previous.valid = false;
 		}
-	}
-	else if (needs_to_land)
-	{
+
+	} else if (needs_to_land) {
 		_mission_item.nav_cmd = NAV_CMD_LAND;
 		_mission_item.lat = _home_pos_sub.get().lat;
 		_mission_item.lon = _home_pos_sub.get().lon;
 		_mission_item.yaw = NAN;
+
 		/* move to landing waypoint before descent if necessary */
-		if ( (_vehicle_status_sub.get().vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING) &&
-		do_need_move_to_land() &&
-		(_work_item_type == WorkItemType::WORK_ITEM_TYPE_DEFAULT ||
-		_work_item_type == WorkItemType::WORK_ITEM_TYPE_MOVE_TO_LAND_AFTER_TRANSITION)) {
+		if ((_vehicle_status_sub.get().vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING) &&
+		    do_need_move_to_land() &&
+		    (_work_item_type == WorkItemType::WORK_ITEM_TYPE_DEFAULT ||
+		     _work_item_type == WorkItemType::WORK_ITEM_TYPE_MOVE_TO_LAND_AFTER_TRANSITION)) {
 
 			new_work_item_type = WorkItemType::WORK_ITEM_TYPE_MOVE_TO_LAND;
 
@@ -202,8 +215,7 @@ void RtlMissionFastReverse::handleLanding(WorkItemType &new_work_item_type)
 			// if the vehicle drifted off the path during back-transition it should just go straight to the landing point
 			pos_sp_triplet->previous.valid = false;
 
-		} else
-		{
+		} else {
 			_mission_item.altitude = _home_pos_sub.get().alt;
 			_mission_item.altitude_is_relative = false;
 		}
@@ -213,7 +225,7 @@ void RtlMissionFastReverse::handleLanding(WorkItemType &new_work_item_type)
 bool RtlMissionFastReverse::do_need_move_to_land()
 {
 	float d_current = get_distance_to_next_waypoint(_mission_item.lat, _mission_item.lon,
-				_global_pos_sub.get().lat, _global_pos_sub.get().lon);
+			  _global_pos_sub.get().lat, _global_pos_sub.get().lon);
 
 	return d_current > _navigator->get_acceptance_radius();
 
