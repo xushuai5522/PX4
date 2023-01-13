@@ -101,11 +101,9 @@ protected:
 			       _land_pos{.lat = 0.0,
 					 .lon = 0.0,
 					 .alt = 0.0f};
-
-private:
-	bool _is_land_start_item_searched{false};
-
 	uORB::Subscription _mission_sub{ORB_ID(mission)};
 	uORB::SubscriptionData<home_position_s> _home_pos_sub{ORB_ID(home_position)};		/**< home position subscription */
 	uORB::Publication<mission_s> _mission_pub{ORB_ID(mission)};
+private:
+	bool _is_land_start_item_searched{false};
 };

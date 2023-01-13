@@ -47,6 +47,7 @@
 #include "navigator_mode.h"
 #include "lib/mission/planned_mission_interface.h"
 #include "rtl_direct.h"
+#include "rtl_direct_mission_land.h"
 #include "rtl_mission_fast.h"
 #include "rtl_mission_fast_reverse.h"
 
@@ -65,6 +66,7 @@ public:
 
 	enum class RtlType {
 		RTL_DIRECT,
+		RTL_DIRECT_MISSION_LAND,
 		RTL_MISSION_FAST,
 		RTL_MISSION_FAST_REVERSE,
 	};
@@ -81,13 +83,42 @@ public:
 private:
 	void onMissionUpdate(bool has_mission_items_changed) override {};
 
-	void setRtlType();
+	void setRtlTypeAndDestination();
+
+	/**
+	 * @brief Find RTL destination.
+	 *
+	 */
+	void findRtlDestination(bool &isMissionLanding, RtlDirect::RtlPosition &rtl_position, float &rtl_alt);
+
+	/**
+	 * @brief Set the position of the land start marker in the planned mission as destination.
+	 *
+	 */
+	void setLandPosAsDestination(RtlDirect::RtlPosition &rtl_position);
+
+	/**
+	 * @brief Set the safepoint as destination.
+	 *
+	 * @param mission_safe_point is the mission safe point/rally point to set as destination.
+	 */
+	void setSafepointAsDestination(RtlDirect::RtlPosition &rtl_position, const mission_safe_point_s &mission_safe_point);
+
+	/**
+	 * @brief
+	 *
+	 * @param cone_half_angle_deg
+	 * @return float
+	 */
+	float calculate_return_alt_from_cone_half_angle(const RtlDirect::RtlPosition &rtl_position, float cone_half_angle_deg);
 
 	hrt_abstime _destination_check_time{0};
 
 	RtlType _rtl_type{RtlType::RTL_DIRECT};
 
 	RtlDirect _rtl_direct;
+
+	RtlDirectMissionLand _rtl_direct_mission_land;
 
 	RtlMissionFast _rtl_mission;
 
@@ -96,10 +127,15 @@ private:
 	bool _enforce_rtl_alt{false};
 
 	DEFINE_PARAMETERS(
-		(ParamInt<px4::params::RTL_TYPE>)          _param_rtl_type
+		(ParamInt<px4::params::RTL_TYPE>)          _param_rtl_type,
+		(ParamInt<px4::params::RTL_CONE_ANG>)      _param_rtl_cone_half_angle_deg,
+		(ParamFloat<px4::params::RTL_RETURN_ALT>)  _param_rtl_return_alt,
+		(ParamFloat<px4::params::RTL_MIN_DIST>)    _param_rtl_min_dist,
+		(ParamFloat<px4::params::NAV_ACC_RAD>)      _param_nav_acc_rad
 	)
 
+	uORB::SubscriptionData<vehicle_global_position_s> _global_pos_sub{ORB_ID(vehicle_global_position)};	/**< global position subscription */
+	uORB::SubscriptionData<vehicle_status_s> _vehicle_status_sub{ORB_ID(vehicle_status)};	/**< vehicle status subscription */
+
 	uORB::Publication<rtl_time_estimate_s> _rtl_time_estimate_pub{ORB_ID(rtl_time_estimate)};
-
-
 };

@@ -58,9 +58,21 @@
 
 class Navigator;
 
-class RtlDirect : public MissionBlock, protected PlannedMissionInterface, public ModuleParams
+class RtlDirect : public MissionBlock, public ModuleParams
 {
 public:
+	/**
+	 * @brief Return to launch position.
+	 * Defines the position and landing yaw for the return to launch destination.
+	 *
+	 */
+	struct RtlPosition {
+		double lat;	/**< latitude in WGS84 [rad].*/
+		double lon;	/**< longitude in WGS84 [rad].*/
+		float alt;	/**< altitude in MSL [m].*/
+		float yaw;	/**< final yaw when landed [rad].*/
+	};
+
 	RtlDirect(Navigator *navigator);
 
 	~RtlDirect() = default;
@@ -81,32 +93,17 @@ public:
 	void on_active() override;
 
 	/**
-	 * @brief on inactive
-	 * Update states while return to launch caluclation is not active.
-	 *
-	 */
-	void on_inactive() override;
-
-	/**
 	 * @brief Calculate the estimated time needed to return to launch.
 	 *
 	 * @return estimated time to return to launch.
 	 */
 	rtl_time_estimate_s calc_rtl_time_estimate();
 
-private:
-	/**
-	 * @brief Return to launch position.
-	 * Defines the position and landing yaw for the return to launch destination.
-	 *
-	 */
-	struct RtlPosition {
-		double lat;	/**< latitude in WGS84 [rad].*/
-		double lon;	/**< longitude in WGS84 [rad].*/
-		float alt;	/**< altitude in MSL [m].*/
-		float yaw;	/**< final yaw when landed [rad].*/
-	};
+	void setRtlAlt(float alt) {_rtl_alt = alt;};
 
+	void setRtlPosition(RtlPosition position) {_destination = position;};
+
+private:
 	/**
 	 * @brief Return to launch heading mode.
 	 *
@@ -135,8 +132,6 @@ private:
 	};
 
 private:
-
-	void onMissionUpdate(bool has_mission_items_changed) override {};
 	/**
 	 * @brief Get the horizontal wind velocity
 	 *
@@ -191,33 +186,6 @@ private:
 	 */
 	float getHoverLandSpeed();
 
-	/**
-	 * @brief Find RTL destination.
-	 *
-	 */
-	void findRtlDestination();
-
-	/**
-	 * @brief Set the position of the land start marker in the planned mission as destination.
-	 *
-	 */
-	void setLandPosAsDestination();
-
-	/**
-	 * @brief Set the safepoint as destination.
-	 *
-	 * @param mission_safe_point is the mission safe point/rally point to set as destination.
-	 */
-	void setSafepointAsDestination(const mission_safe_point_s &mission_safe_point);
-
-	/**
-	 * @brief
-	 *
-	 * @param cone_half_angle_deg
-	 * @return float
-	 */
-	float calculate_return_alt_from_cone_half_angle(float cone_half_angle_deg);
-
 	/** Current state in the state machine.*/
 	RTLState _rtl_state{RTL_STATE_NONE};
 
@@ -236,7 +204,6 @@ private:
 		(ParamInt<px4::params::RTL_HDG_MD>)        _param_rtl_hdg_md,
 		(ParamFloat<px4::params::RTL_TIME_FACTOR>) _param_rtl_time_factor,
 		(ParamInt<px4::params::RTL_TIME_MARGIN>)   _param_rtl_time_margin,
-		(ParamInt<px4::params::RTL_CONE_ANG>)      _param_rtl_cone_half_angle_deg,
 		(ParamFloat<px4::params::NAV_ACC_RAD>)      _param_nav_acc_rad		/**< acceptance for takeoff */
 	)
 
@@ -253,6 +220,5 @@ private:
 	uORB::SubscriptionData<vehicle_land_detected_s> _land_detected_sub{ORB_ID(vehicle_land_detected)};	/**< vehicle land detected subscription */
 	uORB::SubscriptionData<vehicle_status_s> _vehicle_status_sub{ORB_ID(vehicle_status)};	/**< vehicle status subscription */
 	uORB::SubscriptionData<vehicle_local_position_s> _local_pos_sub{ORB_ID(vehicle_local_position)};	/**< vehicle status subscription */
-	uORB::SubscriptionData<home_position_s> _home_pos_sub{ORB_ID(home_position)};		/**< home position subscription */
 	uORB::SubscriptionData<wind_s>		_wind_sub{ORB_ID(wind)};
 };
