@@ -114,6 +114,16 @@ void RtlMissionFast::setActiveMissionItems()
 			pos_sp_triplet->previous = pos_sp_triplet->current;
 		}
 
+		mission_item_s next_mission_item;
+		size_t num_found_items = 0;
+		getNextPositionItems(_mission.current_seq + 1, &next_mission_item, num_found_items, 1u);
+
+		if (num_found_items > 0) {
+
+			mission_apply_limitation(next_mission_item);
+			mission_item_to_position_setpoint(next_mission_item, &pos_sp_triplet->next);
+		}
+
 		mission_apply_limitation(_mission_item);
 		mission_item_to_position_setpoint(_mission_item, &pos_sp_triplet->current);
 	}
@@ -161,10 +171,7 @@ void RtlMissionFast::handleLanding(WorkItemType &new_work_item_type)
 			_mission_item.autocontinue = true;
 			_mission_item.time_inside = 0.0f;
 			_mission_item.vtol_back_transition = true;
-			_mission_item.force_heading = true;
 
-			// TODO: we don't want line following here, but this needs some work to properly implement exiting
-			// the loiter circle on the tangent
 			pos_sp_triplet->previous.valid = false;
 
 		}
