@@ -47,6 +47,7 @@
 
 #include <uORB/Subscription.hpp>
 #include <uORB/topics/home_position.h>
+#include <uORB/topics/rtl_time_estimate.h>
 #include <uORB/topics/vehicle_global_position.h>
 #include <uORB/topics/wind.h>
 
@@ -63,6 +64,8 @@ public:
 	void on_inactive() override;
 
 	bool hasVtolHomeLandApproach();
+
+	rtl_time_estimate_s calc_rtl_time_estimate();
 private:
 
 	enum class vtol_land_state {

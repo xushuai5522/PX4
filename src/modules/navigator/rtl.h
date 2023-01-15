@@ -50,6 +50,7 @@
 #include "rtl_direct_mission_land.h"
 #include "rtl_mission_fast.h"
 #include "rtl_mission_fast_reverse.h"
+#include "vtol_land.h"
 
 #include <uORB/uORB.h>
 #include <uORB/Publication.hpp>
@@ -67,6 +68,7 @@ public:
 	enum class RtlType {
 		RTL_DIRECT,
 		RTL_DIRECT_MISSION_LAND,
+		RTL_DIRECT_SAFE_VTOL,
 		RTL_MISSION_FAST,
 		RTL_MISSION_FAST_REVERSE,
 		VTOL_LAND
@@ -82,6 +84,13 @@ public:
 	void set_return_alt_min(bool min) { _enforce_rtl_alt = min; }
 
 private:
+	enum class DestinationType {
+		DESTINATION_TYPE_HOME,
+		DESTINATION_TYPE_MISSION_LAND,
+		DESTINATION_TYPE_SAFE_POINT,
+	};
+
+private:
 	void onMissionUpdate(bool has_mission_items_changed) override {};
 
 	void setRtlTypeAndDestination();
@@ -90,7 +99,7 @@ private:
 	 * @brief Find RTL destination.
 	 *
 	 */
-	void findRtlDestination(bool &isMissionLanding, RtlDirect::RtlPosition &rtl_position, float &rtl_alt);
+	void findRtlDestination(DestinationType &destination_type, RtlDirect::RtlPosition &rtl_position, float &rtl_alt);
 
 	/**
 	 * @brief Set the position of the land start marker in the planned mission as destination.
@@ -124,6 +133,8 @@ private:
 	RtlMissionFast _rtl_mission;
 
 	RtlMissionFastReverse _rtl_mission_reverse;
+
+	VtolLand _rtl_vtol_land;
 
 	bool _enforce_rtl_alt{false};
 
