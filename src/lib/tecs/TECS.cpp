@@ -614,6 +614,12 @@ void TECSControl::resetIntegrals()
 	_throttle_integ_state = 0.0f;
 }
 
+TECS::TECS() :
+	ModuleParams(nullptr)
+{
+
+}
+
 float TECS::_update_speed_setpoint(const float tas_min, const float tas_max, const float tas_setpoint, const float tas)
 {
 	float new_setpoint{tas_setpoint};
@@ -621,7 +627,10 @@ float TECS::_update_speed_setpoint(const float tas_min, const float tas_max, con
 
 	// Set the TAS demand to the minimum value if an underspeed or
 	// or a uncontrolled descent condition exists to maximise climb rate
-	if (_uncommanded_descent_recovery) {
+	if (_stall_detection_percentage > FLT_EPSILON) {
+		new_setpoint = (1 - _stall_detection_percentage) * tas_setpoint + _stall_detection_percentage * tas_max;
+
+	} else if (_uncommanded_descent_recovery) {
 		new_setpoint = tas_min;
 
 	} else if (percent_undersped > FLT_EPSILON) {
@@ -731,9 +740,16 @@ void TECS::update(float pitch, float altitude, float hgt_setpoint, float EAS_set
 	_control_param.tas_min = eas_to_tas * _equivalent_airspeed_min;
 	_control_param.pitch_max = pitch_limit_max;
 	_control_param.pitch_min = pitch_limit_min;
-	_control_param.throttle_trim = throttle_trim;
 	_control_param.throttle_max = throttle_setpoint_max;
 	_control_param.throttle_min = throttle_min;
+
+	if (throttle_trim > _control_param.throttle_trim / _stall_thr_trim_scale_to_prevent_stall) {
+		_stall_thr_trim_scale_to_prevent_stall = 1.0f;
+		_control_param.throttle_trim = throttle_trim;
+
+	} else {
+		_control_param.throttle_trim = throttle_trim * _stall_thr_trim_scale_to_prevent_stall;
+	}
 
 	if (dt < DT_MIN) {
 		// Update intervall too small, do not update. Assume constant states/output in this case.
@@ -766,6 +782,7 @@ void TECS::update(float pitch, float altitude, float hgt_setpoint, float EAS_set
 		// TODO this function should not be in the module. Only give feedback that the airspeed can't be achieved.
 		control_setpoint.tas_setpoint = _update_speed_setpoint(eas_to_tas * _equivalent_airspeed_min,
 						eas_to_tas * _equivalent_airspeed_max, EAS_setpoint * eas_to_tas, eas_to_tas * eas.speed);
+		_update_altitude_setpoint(control_setpoint, altitude);
 
 		const TECSControl::Input control_input{ .altitude = altitude,
 							.altitude_rate = hgt_rate,
@@ -778,6 +795,9 @@ void TECS::update(float pitch, float altitude, float hgt_setpoint, float EAS_set
 		_detect_uncommanded_descent(throttle_setpoint_max, altitude, hgt_setpoint, equivalent_airspeed * eas_to_tas,
 					    control_setpoint.tas_setpoint);
 
+		// Detect stall
+		_detect_airspeedless_stall(dt, hgt_setpoint, altitude, pitch, hgt_rate);
+
 		// Update time stamps
 		_update_timestamp = now;
 
@@ -788,6 +808,9 @@ void TECS::update(float pitch, float altitude, float hgt_setpoint, float EAS_set
 
 		} else if (_uncommanded_descent_recovery) {
 			_tecs_mode = ECL_TECS_MODE_BAD_DESCENT;
+
+		} else if (_stall_detection_percentage > FLT_EPSILON) {
+			_tecs_mode = ECL_TECS_MODE_STALL_PREVENTION;
 
 		} else {
 			// This is the default operation mode
@@ -804,3 +827,75 @@ void TECS::update(float pitch, float altitude, float hgt_setpoint, float EAS_set
 	}
 }
 
+void TECS::_update_altitude_setpoint(TECSControl::Setpoint &control_setpoint, const float altitude) const
+{
+	if (_stall_detection_percentage > FLT_EPSILON) {
+		control_setpoint.altitude_reference.alt = (1.0f - _stall_detection_percentage) * control_setpoint.altitude_reference.alt
+				+ _stall_detection_percentage * altitude;
+		control_setpoint.altitude_reference.alt_rate = (1.0f - _stall_detection_percentage) *
+				control_setpoint.altitude_reference.alt_rate;
+		control_setpoint.altitude_rate_setpoint = (1.0f - _stall_detection_percentage) * control_setpoint.altitude_rate_setpoint
+				- _stall_detection_percentage * _control_param.max_sink_rate;
+	}
+}
+
+void TECS::_detect_airspeedless_stall(const float dt, const float altitude_sp, const float altitude, const float pitch,
+				      const float altitude_rate)
+{
+	if (_param_fw_stall_prv.get()) {
+		// Checks to detect an aircraft stalling: a positive altitude change is given,
+		// while the pitch command is maxed and the AV is sinking.
+		// TODO could also add airspeed rate negative, would need to filter the speed_deriv_forward.
+		if (((altitude_sp - altitude) > 0.0f) &&
+		    (pitch > 0.0f) &&
+		    (altitude_rate < 0.0f) &&
+		    (fabsf(_control_param.pitch_max - _control.getPitchSetpoint()) < FLT_EPSILON)) {
+			if (_stall_state == STALL_MODE::NO_STALL) {
+				PX4_WARN("Entered stall condition");
+				_stall_start_timestamp = hrt_absolute_time();
+				_stall_state = STALL_MODE::MAYBE_STALL;
+			}
+
+		} else if (_stall_state == STALL_MODE::MAYBE_STALL) {
+			PX4_WARN("Aborting stall");
+			_stall_state = STALL_MODE::NO_STALL;
+			_stall_start_timestamp = 0ULL;
+		}
+
+		// Only be sure to enter stall prevention, is the stal state persists for a certain amount of time.
+		if (_stall_state == STALL_MODE::MAYBE_STALL && hrt_elapsed_time(&_stall_start_timestamp) > 100_ms) {
+			PX4_WARN("Start stall reaction.");
+			_stall_state = STALL_MODE::STALL;
+		}
+
+		// End stall i we pitched the nose downwards and flying nearly at max sinkrate.
+		if ((_stall_state == STALL_MODE::STALL) && (pitch < 0.0f) && (altitude_rate < (0.5f - _control_param.max_sink_rate))) {
+			PX4_WARN("Stall ending, speed increased.");
+			_stall_state = STALL_MODE::STALL_ENDING;
+		}
+
+		if ((_stall_state == STALL_MODE::STALL_ENDING) && (_stall_detection_percentage < FLT_EPSILON)) {
+			PX4_WARN("Stall ended.");
+			_stall_state = STALL_MODE::NO_STALL;
+			_stall_start_timestamp = 0ULL;
+			_stall_thr_trim_scale_to_prevent_stall +=
+				0.05; // Increase throttle trim by 5% to prevent future stall. TODO is this safe?
+		}
+
+		switch (_stall_state) {
+		case STALL_MODE::STALL: {
+				_stall_detection_percentage = math::min(_stall_detection_percentage + dt / 0.2f, 1.0f);
+				break;
+			}
+
+		case STALL_MODE::STALL_ENDING: {
+				_stall_detection_percentage = math::max(_stall_detection_percentage - dt / 0.2f, 0.0f);
+				break;
+			}
+
+		default: {
+				_stall_detection_percentage = 0.0f;
+			}
+		}
+	}
+}

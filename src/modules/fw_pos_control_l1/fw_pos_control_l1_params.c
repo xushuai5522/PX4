@@ -861,6 +861,18 @@ PARAM_DEFINE_FLOAT(FW_T_CLMB_R_SP, 3.0f);
 PARAM_DEFINE_FLOAT(FW_T_SINK_R_SP, 2.0f);
 
 /**
+ * Stall detection and recovery
+ *
+ * Define a crude stall detection based on positive altitude change setpoint, while sinking
+ * with a positive pitch as well as a saturated pitch command.
+ * If stall is detected, ramp up a command to sink with maximum sink rate as well as maximum speed.
+ *
+ * @boolean
+ * @group FW TECS
+ */
+PARAM_DEFINE_INT32(FW_T_STALL_PRV, 0);
+
+/**
  * GPS failure loiter time
  *
  * The time in seconds the system should do open loop loiter and wait for GPS recovery
